@@ -1,0 +1,126 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Bets for friends</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
+		<script src="/static/jquery-2.1.0.min.js" type="text/javascript"></script>
+		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+		<script src="/static/gammasimos.js"></script>
+		<script>
+			$(document).ready(function () {
+		     	$(".btn").tooltip();
+				$(".no-enter").keydown( function(e) {
+					if (e.keyCode == 13) {
+						e.preventDefault();
+					}
+				});
+				csrftoken = getCookie('csrftoken');
+			   });
+
+			function groupNotCreated(e) {
+				$(".label-warning").text("A group with this name already exists.");
+			}
+
+			function groupCreated(e) {
+				if (e.result) {
+					$(".modal").modal('hide');
+					location.reload();
+				} else {
+					groupNotCreated(e);
+				}
+			}
+
+			function createGroup(name) {
+				var createForm = new FormData();
+				createForm.append('group_name', name);
+				$.ajax({
+					url: '/group_create.html',
+					type: 'POST',
+					data: createForm,
+					processData: false,
+					contentType: false,
+					success: groupCreated,
+					error: groupNotCreated
+				});
+			}
+
+		</script>
+	</head>
+	<body>
+		<div class="container" style="padding: 0 15px;">
+			{% if request.user.is_authenticated %}
+				<div class="row">
+					<div class="col-lg-11">
+						<h1 class="">Welcome {{ request.user.first_name }} {{ request.user.last_name }}</h1>
+			  			<p class="lead">
+			  				<button type="button" class="btn btn-primary">Join a group</button>
+			  				<a href="#modal_create" class="btn btn-success" role="button" data-toggle="modal" data-placement="bottom" title="Create a new group where you can invite friends">Create a group</a>
+					</div>
+				</div>
+				{% if member_group or admin_groups %}
+				<div class="row">&nbsp;</div>
+				<table class="table table-hover">
+					<tr>
+						<th>Group name</th>
+						<th>Actions</th>
+					</tr>
+					{% for group in admin_groups %}
+						<tr>
+							<td>{{group.name}}</td>
+							<td>
+								<a href="#" class="btn btn-default" role="button" data-placement="bottom" title="Check group status">
+									<span class="glyphicon glyphicon-search"></span>
+								</a>
+								<a href="#" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Delete group">
+									<span class="glyphicon glyphicon-remove"></span>
+								</a>
+							</td>
+						</tr>
+					{% endfor %}
+					{% for group in member_group %}
+						<tr>
+							<td>{{group.name}}</td>
+							<td>
+								<a href="#" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Check group status">
+									<span class="glyphicon glyphicon-search"></span>
+								</a>
+							</td>
+						</tr>
+					{% endfor %}
+				</table>
+				{% endif %}
+			{% else %}
+				<div class="row">
+		    		<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
+		    	</div>
+			{% endif %}
+		</div>
+
+		<div class="modal fade" id="modal_create" tabindex="-1" role="dialog" aria-labelledby="modal_create" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title" id="modal_create">Create a new group</h4>
+					</div>
+					<div class="modal-body">
+						<form id="newGroup" role="form" class="form-horizontal" action="/group_create.html" method="POST" onsubmit="">{% csrf_token %}
+							<div class="form-group">
+								<label for="groupName" class="col-lg-2 col-lg-offset-1">Name:</label>
+								<input id="groupName" class="col-lg-6 no-enter" name="groupName" type="text" placeholder="Input a group name here">
+								<a type="button" class="btn btn-xs btn-default col-lg-1 col-lg-offset-1" onclick="createGroup(newGroup.groupName.value)">Save</a>
+							</div>
+							<span class="label label-warning col-lg-12"></span>
+							<div 
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</body>

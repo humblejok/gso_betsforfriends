@@ -19,7 +19,7 @@ from gso_betsforfriends.settings import RESOURCES_MAIN_PATH, STATICS_PATH
 LOGGER = logging.getLogger(__name__)
 
 def setup():
-    populate_attributes_from_xlsx('universe.models.Attributes', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    populate_attributes_from_xlsx('bets.models.Attributes', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     generate_attributes()
 
 def generate_attributes():
@@ -186,9 +186,13 @@ class CoreModel(models.Model):
     
     class Meta:
         ordering = ['id']
-    
+
+class Group(CoreModel):
+    name = models.CharField(max_length=128)
+    owners = models.ManyToManyField(User, related_name='group_owners_rel')
+    members = models.ManyToManyField(User, related_name='group_members_rel')
+
 class Attributes(CoreModel):
-    
     identifier = models.CharField(max_length=128)
     name = models.CharField(max_length=128)
     short_name = models.CharField(max_length=32)
@@ -228,12 +232,34 @@ class Score(CoreModel):
         return super(Score, self).get_fields() + ['first','second']
             
 class Match(CoreModel):
+    name = models.CharField(max_length=256)
     type = models.ForeignKey(Attributes, limit_choices_to={'type':'match_type'}, related_name='match_type_rel')
     when = models.DateTimeField()
-    first = models.ForeignKey(Participant, related_name='first_part_rel')
-    second = models.ForeignKey(Participant, related_name='second_part_rel')
+    first = models.ForeignKey(Participant, related_name='match_first_part_rel')
+    second = models.ForeignKey(Participant, related_name='match_second_part_rel')
     result = models.ManyToManyField(Score, related_name='match_score_rel')
     
     def get_fields(self):
         return super(Match, self).get_fields() + ['when','first','second','result']
+    
+class Bet(CoreModel):
+    owner = models.ForeignKey(User, related_name='bet_owner_rel')
+    when = models.DateTimeField()
+    match = models.ForeignKey(User, related_name='bet_match_rel')
+    winner = models.ForeignKey(Participant, related_name='bet_winner_rel')
+    result = models.ManyToManyField(Score, related_name='bet_score_rel')
 
+    def get_fields(self):
+        return super(Bet, self).get_fields() + ['owner','when','match','winner','result']
+    
+class BettableEvent(CoreModel):
+    name = models.CharField(max_length=256)
+    sport = models.ForeignKey(Attributes, limit_choices_to={'type':'sport'}, related_name='event_sport_rel', null=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    participants = models.ManyToManyField(Participant, related_name='event_participant_rel')
+    matchs = models.ManyToManyField(Match, related_name='event_match_rel')
+    
+    def get_fields(self):
+        return super(BettableEvent, self).get_fields() + ['name','sport','start_date','end_date','participants','matchs']
+    
