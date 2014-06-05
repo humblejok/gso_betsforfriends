@@ -21,6 +21,9 @@ LOGGER = logging.getLogger(__name__)
 def setup():
     populate_attributes_from_xlsx('bets.models.Attributes', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     generate_attributes()
+    populate_model_from_xlsx('bets.models.Participant', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    populate_model_from_xlsx('bets.models.Match', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    populate_model_from_xlsx('bets.models.BettableEvent', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
 
 def generate_attributes():
     all_types = Attributes.objects.all().order_by('type').distinct('type')
@@ -90,6 +93,8 @@ def populate_model_from_xlsx(model_name, xlsx_file):
         
 class CoreModel(models.Model):
 
+    many_fields = {}
+
     def get_editable_fields(self):
         values = []
         for field in self.get_fields():
@@ -154,15 +159,29 @@ class CoreModel(models.Model):
                 elif self._meta.get_field(field_info.short_name).get_internal_type()=='ForeignKey':
                     linked_to = self._meta.get_field(field_info.short_name).rel.limit_choices_to
                     foreign = self._meta.get_field(field_info.short_name).rel.to
+                    filtering_by_identifier = dict(linked_to)
+                    filtering_by_identifier['identifier'] = string_value
+                    try:
+                        by_identifier = foreign.objects.filter(**filtering_by_identifier)
+                    except:
+                        by_identifier = None
                     filtering_by_name = dict(linked_to)
                     filtering_by_name['name'] = string_value
-                    by_name = foreign.objects.filter(**filtering_by_name)
+                    try:
+                        by_name = foreign.objects.filter(**filtering_by_name)
+                    except:
+                        by_name = None
                     filtering_by_short = dict(linked_to)
                     filtering_by_short['short_name'] = string_value
-                    by_short = foreign.objects.filter(**filtering_by_short)
-                    if by_name.exists():
+                    try:
+                        by_short = foreign.objects.filter(**filtering_by_short)
+                    except:
+                        by_short = None
+                    if by_identifier!=None and by_identifier.exists():
+                        setattr(self, field_info.short_name, by_identifier[0])
+                    elif by_name!=None and by_name.exists():
                         setattr(self, field_info.short_name, by_name[0])
-                    elif by_short.exists():
+                    elif by_short!=None and by_short.exists():
                         setattr(self, field_info.short_name, by_short[0])
                     else:
                         dict_entry = Dictionary.objects.filter(name=linked_to['type'], auto_create=True)
@@ -223,7 +242,20 @@ class Participant(CoreModel):
 
     def get_fields(self):
         return super(Participant, self).get_fields() + ['name','country','sport']
-    
+
+    @staticmethod
+    def retrieve_or_create(source, key, value):
+        translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
+        if translation.exists():
+            translation = translation[0].short_name
+        else:
+            translation = key
+        participant = Participant.objects.filter(name=value)
+        if participant.exists():
+            return participant[0]
+        else:
+            return None
+
 class Score(CoreModel):
     first = models.IntegerField()
     second = models.IntegerField()
@@ -232,6 +264,7 @@ class Score(CoreModel):
         return super(Score, self).get_fields() + ['first','second']
             
 class Match(CoreModel):
+    
     name = models.CharField(max_length=256)
     type = models.ForeignKey(Attributes, limit_choices_to={'type':'match_type'}, related_name='match_type_rel')
     when = models.DateTimeField()
@@ -240,7 +273,20 @@ class Match(CoreModel):
     result = models.ManyToManyField(Score, related_name='match_score_rel')
     
     def get_fields(self):
-        return super(Match, self).get_fields() + ['when','first','second','result']
+        return super(Match, self).get_fields() + ['name','type','when','first','second','result']
+    
+    @staticmethod
+    def retrieve_or_create(source, key, value):
+        translation = Attributes.objects.filter(active=True, name=key, type=source.lower() + '_translation')
+        if translation.exists():
+            translation = translation[0].short_name
+        else:
+            translation = key
+        match = Match.objects.filter(name=value)
+        if match.exists():
+            return match[0]
+        else:
+            return None
     
 class Bet(CoreModel):
     owner = models.ForeignKey(User, related_name='bet_owner_rel')
