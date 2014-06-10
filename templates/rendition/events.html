@@ -12,8 +12,8 @@
 	</tr>
 	<tr id="{{event.id}}" class="score">
 		<td id="label_first_{{event.id}}" class="col-lg-2 text-center">{{event.first}}</td>
-		<td class="col-lg-1 text-center"><input id="first_{{event.id}}" type="text" class="form-control text-center no-enter col-lg-1" onchange="checkAllBets()"></input></td>
-		<td class="col-lg-1 text-center"><input id="second_{{event.id}}" type="text" class="form-control text-center no-enter col-lg-1" onchange="checkAllBets()"></input></td>
+		<td class="col-lg-1 text-center"><input id="first_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllBets()"></input></td>
+		<td class="col-lg-1 text-center"><input id="second_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllBets()"></input></td>
 		<td id="label_second_{{event.id}}" class="col-lg-2 text-center">{{event.second}}</td>
 	</tr>
 	{% endfor %}

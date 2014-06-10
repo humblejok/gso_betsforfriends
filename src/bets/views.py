@@ -1,7 +1,8 @@
 from django.db.models import Q
 from django.shortcuts import render, redirect
 
-from bets.models import Group, Match, Bet, Score
+from bets.models import Group, Match, Bet, Score, UserRanking, LOGGER,\
+    BettableEvent
 from django.http.response import HttpResponse
 from django.contrib.auth.models import User
 import datetime
@@ -12,13 +13,24 @@ import simplejson
 def index(request):
     if request.user.is_authenticated and request.user.id!=None:
         user = User.objects.get(id=request.user.id)
-        now = dt.combine(datetime.date.today(), dt.min.time())
-        end = dt.combine(dates.AddDay(now, 14), dt.max.time())
+        rankings = UserRanking.objects.filter(owner__id=user.id)
+        if not rankings.exists():
+            initial_ranking = UserRanking()
+            initial_ranking.owner = user
+            initial_ranking.group = None
+            initial_ranking.overall_score = 0
+            initial_ranking.rank = None
+            initial_ranking.save()
+            rankings = UserRanking.objects.filter(owner__id=user.id)
+        global_ranking = UserRanking.objects.filter(owner__id=user.id, group=None)
+        now = datetime.datetime.today()
+        begin = dt.combine(datetime.date.today(), dt.min.time())
+        end = dt.combine(dates.AddDay(begin, 14), dt.max.time())
         admin_groups = Group.objects.filter(Q(owners__id__exact=request.user.id)).order_by('name')
         member_groups = Group.objects.filter(Q(members__id__exact=request.user.id)).order_by('name')
-        all_dates = Match.objects.filter(when__gte=now, when__lte=end).order_by('when').dates('when','day')
+        all_dates = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when').dates('when','day')
         all_dates = [a_date.strftime('%Y-%m-%d') for a_date in all_dates]
-        all_matches = Match.objects.filter(when__gte=now, when__lte=end).order_by('when')
+        all_matches = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when')
         all_bets = {}
         for match in all_matches:
             bet = Bet.objects.filter(owner__id=request.user.id, match__id=match.id)
@@ -38,14 +50,16 @@ def index(request):
                 score.save()
                 bet.result = score
                 bet.save()
-            all_bets[bet.match.id] = {'id': bet.id, 'score': {'first':bet.result.first, 'second':bet.result.second}}
-        context = {'admin_groups': admin_groups,'member_groups': member_groups, 'all_dates': all_dates, 'all_bets': all_bets}
+            all_bets[bet.match.id] = {'id': bet.id, 'score': {'first':bet.result.first, 'second':bet.result.second}, 'enabled':str(bet.match.when>=now).lower()}
+        active_events = BettableEvent.objects.filter(end_date__gte=datetime.date.today).order_by('name')
+        context = {'admin_groups': admin_groups,'member_groups': member_groups, 'all_dates': all_dates, 'all_bets': all_bets, 'rankings': rankings, 'global_rank':global_ranking, 'events': active_events}
     else:
         context = {}
     return render(request,'index.html', context)
 
 def save_bets(request):
     if request.user.is_authenticated and request.user.id!=None:
+        message = "Aucun probleme."
         user = User.objects.get(id=request.user.id)
         now = dt.now()
         all_bets = simplejson.loads(request.POST['all_bets'])
@@ -53,19 +67,23 @@ def save_bets(request):
             web_bet = all_bets[bet]
             bet_id = web_bet[u'id']
             user_bet = Bet.objects.get(id=bet_id, owner__id=user.id)
-            score = Score.objects.get(id=user_bet.result.id)
-            user_bet.when = now
-            score.first = web_bet[u'score'][u'first']
-            score.second = web_bet[u'score'][u'second']
-            score.save()
-            if score.first==score.second:
-                user_bet.winner = None
-            elif score.first>score.second:
-                user_bet.winner = user_bet.match.first
+            if user_bet.match.when>=now:
+                score = Score.objects.get(id=user_bet.result.id)
+                user_bet.when = now
+                score.first = web_bet[u'score'][u'first']
+                score.second = web_bet[u'score'][u'second']
+                score.save()
+                if score.first==score.second:
+                    user_bet.winner = None
+                elif score.first>score.second:
+                    user_bet.winner = user_bet.match.first
+                else:
+                    user_bet.winner = user_bet.match.second
+                user_bet.save()
             else:
-                user_bet.winner = user_bet.match.second
-            user_bet.save()
-    return HttpResponse('{"result": true, "message":"No problem occured."}', content_type="application/json");
+                LOGGER.warn("Tried to bet after date")
+                message = "Un ou plusieurs matchs ont deja commence."
+    return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
 
 def group_create(request):
     group_name = request.POST['group_name']

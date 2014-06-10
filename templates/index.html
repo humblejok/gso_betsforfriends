@@ -35,12 +35,25 @@
 						e.preventDefault();
 					}
 				});
+				$(".num-only").keydown( function(e) {
+					if (e.keyCode==13) {
+						e.preventDefault();
+					} else {
+						if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 || (e.keyCode == 65 && e.ctrlKey === true) || (e.keyCode >= 35 && e.keyCode <= 39)) {
+							return;
+						}
+						if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+							e.preventDefault();
+						}
+					}
+				});
 				csrftoken = getCookie('csrftoken');
 				$("#eventDate").datepicker({ dateFormat: "yy-mm-dd", beforeShowDay: availableEventDate });
 				currentDate = allDates[0];
 				$("#eventDate").val(currentDate);
 				dateHasChanged();
 			   });
+
 
 			function groupNotCreated(e) {
 				$(".label-warning").text("A group with this name already exists.");
@@ -132,8 +145,12 @@
 			function updateAllBets() {
 				$("tr.score").each(function() {
 					var currentId = $(this).attr("id");
+					var disabled = all_bets[currentId]['enabled']!='true';
 					$("#first_" + currentId).val(all_bets[currentId]["score"]["first"]);
 					$("#second_" + currentId).val(all_bets[currentId]["score"]["second"]);
+					$("#first_" + currentId).prop('disabled',disabled)
+					$("#second_" + currentId).prop('disabled',disabled)
+
 				});
 				checkAllBets();
 			}
@@ -150,57 +167,42 @@
 			{% if request.user.is_authenticated %}
 				<div class="row">
 					<div class="col-lg-11">
-						<h1 class="">Welcome {{ request.user.first_name }} {{ request.user.last_name }}</h1>
-			  			<p class="lead">
-			  				<button type="button" class="btn btn-primary">Join a group</button>
-			  				<a href="#modal_create" class="btn btn-success" role="button" data-toggle="modal" data-placement="bottom" title="Create a new group where you can invite friends">Create a group</a>
+						<h1 class="">Bienvenue {{ request.user.first_name }} {{ request.user.last_name }}</h1>
+			  			<p class="lead">{% if global_rank.rank %}Vous êtes classé <blue>{{global_rank.rank}}</blue> avec un score de <blue>{{global_rank.overall_score}}</blue>{% else %}Vous n'avez pas encore de classement.{% endif %}
+
 					</div>
+					<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
+						<span class="glyphicon glyphicon-off"></span>
+					</a>
 				</div>
 				<div class="row">&nbsp;</div>
 				<div class="row">
 					<div class="col-lg-2">
-						<input type="text" class="form-control no-enter" id="eventDate" name="eventDate" placeholder="Event date" onchange="dateHasChanged()">
+						<input type="text" class="form-control no-enter text-center" id="eventDate" name="eventDate" placeholder="Event date" onchange="dateHasChanged()">
 					</div>
 				</div>
 				<div class="row">&nbsp;</div>
 				<div class="row" id="eventTableDiv">
 				</div>
-				{% if member_group or admin_groups %}
 				<div class="row">&nbsp;</div>
-				<table class="table table-hover">
-					<tr>
-						<th>Group name</th>
-						<th>Actions</th>
-					</tr>
-					{% for group in admin_groups %}
-						<tr>
-							<td>{{group.name}}</td>
-							<td>
-								<a href="#" class="btn btn-default" role="button" data-placement="bottom" title="Check group status">
-									<span class="glyphicon glyphicon-search"></span>
-								</a>
-								<a href="#" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Delete group">
-									<span class="glyphicon glyphicon-remove"></span>
-								</a>
-							</td>
-						</tr>
-					{% endfor %}
-					{% for group in member_group %}
-						<tr>
-							<td>{{group.name}}</td>
-							<td>
-								<a href="#" class="btn btn-default" role="button" data-toggle="modal" data-placement="bottom" title="Check group status">
-									<span class="glyphicon glyphicon-search"></span>
-								</a>
-							</td>
-						</tr>
-					{% endfor %}
-				</table>
-				{% endif %}
+				<div class="row">
+	  				<button type="button" class="btn btn-primary col-lg-offset-9">Rejoindre un groupe</button>
+	  				<a href="#modal_create" class="btn btn-success" role="button" data-toggle="modal" data-placement="bottom" title="Create a new group where you can invite friends">Créer un groupe</a>
+	  			</div>
 			{% else %}
 				<div class="row">
+					<div class="col-lg-11">
+						<h1 class="">Bienvenue</h1>
+			  			<p class="lead">Ici, vous ne risquez pas de vous faire dépouiller car il n'est aucunement possible de miser une somme d'argent. Ce site sert simplement à garder une trace de vos pronostics et de comparer vos résultats avec tous les membres du site ou simplement un group d'ami.
+			  			<p class="lead">Aucune réelle inscription est nécessaire, il suffit simplement de posséder un compte Facebook et de vous identifier en utilisant ce même compte. Aucun email indésirable ne sera envoyé à vos contacts.
+					</div>
+				</div>
+
+				<div class="row text-center">
 		    		<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
 		    	</div>
+		    	<div style="height: 400px;">&nbsp;</div>
+		    	<div class="row h6">Ce site utilise des icônes en provenance de <a href="http://glyphicons.com/">GlyphIcons</a></div>
 			{% endif %}
 		</div>
 
@@ -209,17 +211,26 @@
 				<div class="modal-content">
 					<div class="modal-header">
 						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-						<h4 class="modal-title" id="modal_create">Create a new group</h4>
+						<h4 class="modal-title" id="modal_create">Créer un nouveau groupe</h4>
 					</div>
 					<div class="modal-body">
 						<form id="newGroup" role="form" class="form-horizontal" action="/group_create.html" method="POST" onsubmit="">{% csrf_token %}
 							<div class="form-group">
-								<label for="groupName" class="col-lg-2 col-lg-offset-1">Name:</label>
-								<input id="groupName" class="col-lg-6 no-enter" name="groupName" type="text" placeholder="Input a group name here">
+								<label for="groupName" class="col-lg-2 col-lg-offset-1">Nom:</label>
+								<input id="groupName" class="col-lg-6 no-enter" name="groupName" type="text" placeholder="Insérer le nom du groupe ici">
 								<a type="button" class="btn btn-xs btn-default col-lg-1 col-lg-offset-1" onclick="createGroup(newGroup.groupName.value)">Save</a>
 							</div>
+							<div class="form-group">
+								<label for="attachedEvent" class="col-lg-2 col-lg-offset-1">Evénement:</label>
+								<div class="col-lg-4">
+									<select class="form-control no-enter" id="attachedEvent" name="attachedEvent">
+										{% for event in events %}
+											<option value="{{event.id}}">{{event.name}}</option>
+										{% endfor %}
+									</select>
+								</div>
+							</div>
 							<span class="label label-warning col-lg-12"></span>
-							<div 
 						</form>
 					</div>
 					<div class="modal-footer">

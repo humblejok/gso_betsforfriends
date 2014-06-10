@@ -134,8 +134,6 @@ INSTALLED_APPS = (
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.facebook',
-    'allauth.socialaccount.providers.google',
-    'allauth.socialaccount.providers.openid',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',
 )

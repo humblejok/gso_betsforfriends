@@ -65,7 +65,7 @@ def populate_attributes_from_xlsx(model_name, xlsx_file):
             break
     LOGGER.info('Using header:' + str(header))
     row_index += 1
-    while row_index<sheet.get_highest_row():
+    while row_index<=sheet.get_highest_row():
         if model.objects.filter(identifier=sheet.cell(row = row_index, column = 1).value).exists():
             instance = model.objects.get(identifier=sheet.cell(row = row_index, column = 1).value)
         else:
@@ -95,7 +95,7 @@ def populate_model_from_xlsx(model_name, xlsx_file):
             break
     LOGGER.info('Using header:' + str(header))
     row_index += 1
-    while row_index<sheet.get_highest_row():
+    while row_index<=sheet.get_highest_row():
         instance = model()
         for i in range(0,len(header)):
             value = sheet.cell(row = row_index, column = i + 1).value
@@ -229,6 +229,25 @@ class Group(CoreModel):
     name = models.CharField(max_length=128)
     owners = models.ManyToManyField(User, related_name='group_owners_rel')
     members = models.ManyToManyField(User, related_name='group_members_rel')
+    event = models.ForeignKey('BettableEvent', related_name='group_event')
+    
+    def get_fields(self):
+        return ['name','owners','members', 'event']
+    
+    class Meta:
+        ordering = ['name']
+
+class UserRanking(CoreModel):
+    owner = models.ForeignKey(User, related_name='ranking_owner_rel')
+    group = models.ForeignKey(Group, related_name='ranking_group_rel', null=True)
+    overall_score = models.IntegerField(default=0)
+    rank = models.IntegerField(null=True)
+
+    def get_fields(self):
+        return ['owner','group','score', 'rank']
+    
+    class Meta:
+        ordering = ['group']
 
 class Attributes(CoreModel):
     identifier = models.CharField(max_length=128)
@@ -284,7 +303,6 @@ class Score(CoreModel):
         return super(Score, self).get_fields() + ['first','second']
             
 class Match(CoreModel):
-    
     name = models.CharField(max_length=256)
     type = models.ForeignKey(Attributes, limit_choices_to={'type':'match_type'}, related_name='match_type_rel')
     when = models.DateTimeField()
