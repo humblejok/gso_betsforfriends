@@ -15,6 +15,7 @@ import os
 import traceback
 from django.template.context import Context
 from gso_betsforfriends.settings import RESOURCES_MAIN_PATH, STATICS_PATH
+from django.utils import dates
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,7 +34,19 @@ def generate_attributes():
         template = loader.get_template('rendition/attributes_option_renderer.html')
         rendition = template.render(context)
         # TODO Implement multi-langage
-        outfile = os.path.join(STATICS_PATH, a_type.type + '_en.html')
+        outfile = os.path.join(STATICS_PATH, 'attributes', a_type.type + '_en.html')
+        with open(outfile,'w') as o:
+            o.write(rendition.encode('utf-8'))
+            
+def generate_events():
+    now = dt.combine(datetime.date.today(), dt.min.time())
+    all_dates = Match.objects.filter(when__gte=now).order_by('when').dates('when','day')
+    template = loader.get_template('rendition/events.html')
+    for a_date in all_dates:
+        events = Match.objects.filter(when__gte=dt.combine(a_date, dt.min.time()), when__lte=dt.combine(a_date, dt.max.time())).order_by('when')
+        context = Context({"events": events})
+        rendition = template.render(context)
+        outfile = os.path.join(STATICS_PATH,'events', a_date.strftime('%Y-%m-%d') + '_en.html')
         with open(outfile,'w') as o:
             o.write(rendition.encode('utf-8'))
 
@@ -41,10 +54,10 @@ def populate_attributes_from_xlsx(model_name, xlsx_file):
     model = classes.my_class_import(model_name)
     workbook = load_workbook(xlsx_file)
     sheet = workbook.get_sheet_by_name(name=model.__name__)
-    row_index = 0
+    row_index = 1
     # Reading header
     header = []
-    for column_index in range(0, sheet.get_highest_column()):
+    for column_index in range(1, sheet.get_highest_column()+1):
         value = sheet.cell(row = row_index, column=column_index).value
         if value!=None:
             header.append(value if value!='' else header[-1])
@@ -53,14 +66,17 @@ def populate_attributes_from_xlsx(model_name, xlsx_file):
     LOGGER.info('Using header:' + str(header))
     row_index += 1
     while row_index<sheet.get_highest_row():
-        if model.objects.filter(identifier=sheet.cell(row = row_index, column=0).value).exists():
-            instance = model.objects.get(identifier=sheet.cell(row = row_index, column=0).value)
+        if model.objects.filter(identifier=sheet.cell(row = row_index, column = 1).value).exists():
+            instance = model.objects.get(identifier=sheet.cell(row = row_index, column = 1).value)
         else:
             instance = model()
         for i in range(0,len(header)):
-            value = sheet.cell(row = row_index, column=i).value
+            value = sheet.cell(row = row_index, column = i+1).value
             setattr(instance, header[i], value)
-        instance.save()
+        if instance.identifier==None:
+            break
+        else:
+            instance.save()
         row_index += 1
 
 def populate_model_from_xlsx(model_name, xlsx_file):
@@ -68,10 +84,10 @@ def populate_model_from_xlsx(model_name, xlsx_file):
     model = classes.my_class_import(model_name)
     workbook = load_workbook(xlsx_file)
     sheet = workbook.get_sheet_by_name(name=model.__name__)
-    row_index = 0
+    row_index = 1
     # Reading header
     header = []
-    for column_index in range(0, sheet.get_highest_column()):
+    for column_index in range(1, sheet.get_highest_column() + 1):
         value = sheet.cell(row = row_index, column=column_index).value
         if value!=None:
             header.append(value if value!='' else header[-1])
@@ -82,12 +98,15 @@ def populate_model_from_xlsx(model_name, xlsx_file):
     while row_index<sheet.get_highest_row():
         instance = model()
         for i in range(0,len(header)):
-            value = sheet.cell(row = row_index, column=i).value
+            value = sheet.cell(row = row_index, column = i + 1).value
             field_info = Attributes()
             field_info.short_name = header[i]
             field_info.name = header[i]
             instance.set_attribute('excel', field_info, value)
-        instance.save()
+        if instance.name==None:
+            break
+        else:
+            instance.save()
         row_index += 1
         
         
@@ -257,8 +276,9 @@ class Participant(CoreModel):
             return None
 
 class Score(CoreModel):
-    first = models.IntegerField()
-    second = models.IntegerField()
+    name = models.CharField(max_length=256)
+    first = models.IntegerField(default=0)
+    second = models.IntegerField(default=0)
     
     def get_fields(self):
         return super(Score, self).get_fields() + ['first','second']
@@ -270,7 +290,7 @@ class Match(CoreModel):
     when = models.DateTimeField()
     first = models.ForeignKey(Participant, related_name='match_first_part_rel')
     second = models.ForeignKey(Participant, related_name='match_second_part_rel')
-    result = models.ManyToManyField(Score, related_name='match_score_rel')
+    result = models.ForeignKey(Score, related_name='match_score_rel', null=True)
     
     def get_fields(self):
         return super(Match, self).get_fields() + ['name','type','when','first','second','result']
@@ -291,9 +311,9 @@ class Match(CoreModel):
 class Bet(CoreModel):
     owner = models.ForeignKey(User, related_name='bet_owner_rel')
     when = models.DateTimeField()
-    match = models.ForeignKey(User, related_name='bet_match_rel')
-    winner = models.ForeignKey(Participant, related_name='bet_winner_rel')
-    result = models.ManyToManyField(Score, related_name='bet_score_rel')
+    match = models.ForeignKey(Match, related_name='bet_match_rel')
+    winner = models.ForeignKey(Participant, related_name='bet_winner_rel', null=True)
+    result = models.ForeignKey(Score, related_name='bet_score_rel')
 
     def get_fields(self):
         return super(Bet, self).get_fields() + ['owner','when','match','winner','result']

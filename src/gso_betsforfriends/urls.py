@@ -11,5 +11,5 @@ urlpatterns = patterns('',
     # Main page
     url(r'^index.html$', 'bets.views.index', name='index'),
     url(r'^group_create.html$', 'bets.views.group_create', name='group_create'),
-    
+    url(r'^save_bets.html$', 'bets.views.save_bets', name='save_bets'),
 )
