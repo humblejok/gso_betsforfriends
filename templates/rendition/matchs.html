@@ -1,20 +1,21 @@
 {% load bets_tags %}
-<table class="table col-lg-6">
+<table class="table col-lg-7">
 	{% for event in events %}
 	<tr class="info">
 		<td colspan=2>
 			{{event.name}}
 		</td>
-		<td>
+		<td colspan=2>
 			{{event.when|date:'M d, Y H:i'}}
 		</td>
-		<td></td>
+		<td>&nbsp;</td>
 	</tr>
 	<tr id="{{event.id}}" class="score">
 		<td id="label_first_{{event.id}}" class="col-lg-2 text-center">{{event.first}}</td>
 		<td class="col-lg-1 text-center"><input id="first_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllMatchs()" value="{% if event.result.first %}{{event.result.first}}{% else %}0{% endif %}"></input></td>
 		<td class="col-lg-1 text-center"><input id="second_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllMatchs()" value="{% if event.result.second %}{{event.result.second}}{% else %}0{% endif %}"></input></td>
 		<td id="label_second_{{event.id}}" class="col-lg-2 text-center">{{event.second}}</td>
+		<td class="col-lg-1 text-center"><button type="button" class="btn btn-info btn-lg" onclick="saveOneMatch({{event.id}})">Sauvegarder</button></td>
 	</tr>
 	{% endfor %}
 </table>

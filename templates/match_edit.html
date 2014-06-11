@@ -14,6 +14,7 @@
 		<script>
 			var allDates = {{all_dates|safe}};
 			var currentDate;
+			var all_matchs = {};
 
 			function availableEventDate(dt) {
 				var ymd = dt.toString('yyyy-MM-dd');
@@ -63,24 +64,58 @@
 				});
 			}
 
-			function saveMatchsScore() {
-				$("tr.score").each(function() {
-					var currentId = $(this).attr("id");
-					var first = $("#first_" + currentId).val();
-					var second = $("#second_" + currentId).val();
-					all_bets[currentId]["score"]["first"] = Number(first);
-					all_bets[currentId]["score"]["second"] = Number(second);
-				});
+			function matchsNotSaved(e) {
+				alert("An error occured while saving [" + e.message + "].");
+			}
+
+			function matchsSaved(e) {
+				if (e.result) {
+					// Nothing to do
+				} else {
+					betsNotSaved(e);
+				}
+			}
+
+			function saveOneMatch(currentId) {
+				var first = $("#first_" + currentId).val();
+				var second = $("#second_" + currentId).val();
+				all_matchs = {};
+				all_matchs[currentId] = {"score":{}};
+				all_matchs[currentId]["score"]["first"] = Number(first);
+				all_matchs[currentId]["score"]["second"] = Number(second);
 				var updateForm = new FormData();
-				updateForm.append('all_bets', JSON.stringify(all_bets));
+				updateForm.append('all_matchs', JSON.stringify(all_matchs));
 				$.ajax({
-					url: '/save_bets.html',
+					url: '/matchs_save.html',
 					type: 'POST',
 					data: updateForm,
 					processData: false,
 					contentType: false,
-					success: betsSaved,
-					error: betsNotSaved
+					success: matchsSaved,
+					error: matchsNotSaved
+				});
+			}
+
+			function saveAllMatchs() {
+				all_matchs = {}
+				$("tr.score").each(function() {
+					var currentId = $(this).attr("id");
+					var first = $("#first_" + currentId).val();
+					var second = $("#second_" + currentId).val();
+					all_matchs[currentId] = {"score":{}};
+					all_matchs[currentId]["score"]["first"] = Number(first);
+					all_matchs[currentId]["score"]["second"] = Number(second);
+				});
+				var updateForm = new FormData();
+				updateForm.append('all_matchs', JSON.stringify(all_matchs));
+				$.ajax({
+					url: '/matchs_save.html',
+					type: 'POST',
+					data: updateForm,
+					processData: false,
+					contentType: false,
+					success: matchsSaved,
+					error: matchsNotSaved
 				});
 			}
 
@@ -121,7 +156,7 @@
 				</div>
 				<div class="row">&nbsp;</div>
 				<div class="row">
-					<button type="button" class="btn btn-success btn-lg col-lg-offset-10">Sauvegarder</button>
+					<button type="button" class="btn btn-primary btn-lg col-lg-offset-10" onclick="saveAllMatchs()">Sauvegarder tous</button>
 				</div>
 			{% else %}
 				<div class="row">
