@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.db.models.fields import FieldDoesNotExist
 from django.template import loader
 from openpyxl.reader.excel import load_workbook
-from seq_common.utils import classes
+from seq_common.utils import classes, dates
 from datetime import datetime as dt
 
 import datetime
@@ -15,7 +15,7 @@ import os
 import traceback
 from django.template.context import Context
 from gso_betsforfriends.settings import RESOURCES_MAIN_PATH, STATICS_PATH
-from django.utils import dates
+from django.db.models.aggregates import Sum
 
 LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +47,18 @@ def generate_events():
         context = Context({"events": events})
         rendition = template.render(context)
         outfile = os.path.join(STATICS_PATH,'events', a_date.strftime('%Y-%m-%d') + '_en.html')
+        with open(outfile,'w') as o:
+            o.write(rendition.encode('utf-8'))
+            
+def generate_matchs():
+    now = dt.combine(datetime.date.today(), dt.min.time())
+    all_dates = Match.objects.filter(when__gte=now).order_by('when').dates('when','day')
+    template = loader.get_template('rendition/matchs.html')
+    for a_date in all_dates:
+        events = Match.objects.filter(when__gte=dt.combine(a_date, dt.min.time()), when__lte=dt.combine(a_date, dt.max.time())).order_by('when')
+        context = Context({"events": events})
+        rendition = template.render(context)
+        outfile = os.path.join(STATICS_PATH,'matchs', a_date.strftime('%Y-%m-%d') + '_en.html')
         with open(outfile,'w') as o:
             o.write(rendition.encode('utf-8'))
 
@@ -109,7 +121,75 @@ def populate_model_from_xlsx(model_name, xlsx_file):
             instance.save()
         row_index += 1
         
-        
+def rank_list(rank_list):
+    ordered = sorted(rank_list, key=lambda x: x.overall_score, reverse=True)
+    ranking = 1
+    for rank in ordered:
+        rank.rank = ranking
+        ranking += 1
+    [rank.save() for rank in ordered]
+
+def compute_event_ranking():
+    users = User.objects.filter(is_active=True)
+    today = dates.AddDay(datetime.date.today(),-1)
+    events = BettableEvent.objects.filter(end_date__gte=today)
+    events_ranking = {}
+    for event in events:
+        LOGGER.info("Working on event " + str(event.name))
+        EventRanking.objects.filter(event__id=event.id).delete()
+        for user in users:
+            LOGGER.info("\tWorking on user " + str(user.username))
+            for match in event.matchs.filter(result__isnull=False):
+                LOGGER.info("\t\tWorking on match " + str(match.name))
+                score = 0
+                bet = Bet.objects.filter(match__id=match.id, owner__id=user.id)
+                if bet.winner==None and match.winner==None:
+                    score += 3
+                elif bet.winner!=None and match.winner!=None:
+                    score += 3 if bet.winner.id==match.winner.id else 0
+                score += 1 if bet.result.first==match.result.first else 0
+                score += 1 if bet.result.second==match.result.second else 0
+                if not events_ranking.has_key(event.id):
+                    events_ranking[event.id] = {}
+                if not events_ranking[event.id].has_key(user.id):
+                    rank = EventRanking()
+                    rank.event = event
+                    rank.owner = user
+                    rank.overall_score = 0
+                    rank.rank = None
+                    events_ranking[event.id][user.id] = rank
+                events_ranking[event.id][user.id].overall_score += score
+    for event_id in events_ranking.keys():
+        rank_list(events_ranking[event_id].values())
+
+def compute_group_ranking():
+    today = dates.AddDay(datetime.date.today(),-1)
+    for group in Group.objects.filter(event__end_date__gte=today):
+        ranks = []
+        for user in list(group.members.all()) + list(group.owners.all()):
+            ranking = UserRanking.objects.filter(owner__id=user.id, group__id=group.id)
+            if not ranking.exists():
+                ranking = UserRanking()
+                ranking.owner = user
+                ranking.group = group
+                ranking.overall_score = 0
+                ranking.rank = None
+                ranking.save()
+            else:
+                ranking = ranking[0]
+            ranks.append(ranking)
+            event_rank = EventRanking.objects.filter(event__id=group.event.id, owner__id=user.id)
+            if event_rank.exists():
+                ranking.overall_score = event_rank.overall_score
+                ranking.save()
+            else:
+                LOGGER.warn("User [" + user.id +"] is not ranked in event:" + str(group.event.name))
+        rank_list(ranks)
+
+def compute_overall_ranking():
+    global_scores = EventRanking.objects.values('user').annotate(global_score= Sum('overall_score'))
+    
+
 class CoreModel(models.Model):
 
     many_fields = {}
@@ -237,6 +317,18 @@ class Group(CoreModel):
     class Meta:
         ordering = ['name']
 
+class EventRanking(CoreModel):
+    owner = models.ForeignKey(User, related_name='ranking_event_user')
+    event = models.ForeignKey('BettableEvent', related_name='ranking_event')
+    overall_score = models.IntegerField(default=0)
+    rank = models.IntegerField(null=True)
+    
+    def get_fields(self):
+        return ['owner','event','overall_score', 'rank']
+    
+    class Meta:
+        ordering = ['rank']
+    
 class UserRanking(CoreModel):
     owner = models.ForeignKey(User, related_name='ranking_owner_rel')
     group = models.ForeignKey(Group, related_name='ranking_group_rel', null=True)
@@ -244,10 +336,10 @@ class UserRanking(CoreModel):
     rank = models.IntegerField(null=True)
 
     def get_fields(self):
-        return ['owner','group','score', 'rank']
+        return ['owner','group','overall_score', 'rank']
     
     class Meta:
-        ordering = ['group']
+        ordering = ['rank']
 
 class Attributes(CoreModel):
     identifier = models.CharField(max_length=128)
@@ -300,7 +392,7 @@ class Score(CoreModel):
     second = models.IntegerField(default=0)
     
     def get_fields(self):
-        return super(Score, self).get_fields() + ['first','second']
+        return super(Score, self).get_fields() + ['name', 'first','second']
             
 class Match(CoreModel):
     name = models.CharField(max_length=256)
@@ -325,7 +417,7 @@ class Match(CoreModel):
             return match[0]
         else:
             return None
-    
+
 class Bet(CoreModel):
     owner = models.ForeignKey(User, related_name='bet_owner_rel')
     when = models.DateTimeField()

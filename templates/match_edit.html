@@ -1,0 +1,143 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Editer les résultats des matchs</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
+		<link href="/static/themes/redmond/jquery-ui.min.css" rel="stylesheet" type="text/css"/>
+		<script src="/static/jquery-2.1.0.min.js" type="text/javascript"></script>
+		<script src="/static/jquery-ui.js" type="text/javascript"></script>
+		<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+		<script src="/static/gammasimos.js"></script>
+		<script src="/static/date.js" type="text/javascript"></script>
+		<script>
+			var allDates = {{all_dates|safe}};
+			var currentDate;
+
+			function availableEventDate(dt) {
+				var ymd = dt.toString('yyyy-MM-dd');
+				if ($.inArray(ymd, allDates)!=-1) {
+					return [true, "", "Available"];
+				} else {
+					return [false, "", "unAvailable"];
+				}
+			}
+			$(document).ready(function () {
+		     	$(".btn").tooltip();
+				$(".no-enter").keydown( function(e) {
+					if (e.keyCode == 13) {
+						e.preventDefault();
+					}
+				});
+				csrftoken = getCookie('csrftoken');
+				$("#eventDate").datepicker({ dateFormat: "yy-mm-dd", beforeShowDay: availableEventDate });
+				currentDate = allDates[0];
+				$("#eventDate").val(currentDate);
+				dateHasChanged();
+			});
+
+			function checkAllMatchs() {
+				$("tr.score").each(function() {
+					var currentId = $(this).attr("id");
+					var first = $("#first_" + currentId).val();
+					var second = $("#second_" + currentId).val();
+					$("#label_first_" + currentId).removeClass("warning");
+					$("#label_first_" + currentId).removeClass("success");
+					$("#label_first_" + currentId).removeClass("danger");
+					$("#label_second_" + currentId).removeClass("warning");
+					$("#label_second_" + currentId).removeClass("success");
+					$("#label_second_" + currentId).removeClass("danger");
+					if (first==second) {
+						$("#label_first_" + currentId).addClass("warning");
+						$("#label_second_" + currentId).addClass("warning");
+					} else {
+						if (Number(first)>Number(second)) {
+							$("#label_first_" + currentId).addClass("success");
+							$("#label_second_" + currentId).addClass("danger");
+						} else {
+							$("#label_first_" + currentId).addClass("danger");
+							$("#label_second_" + currentId).addClass("success");
+						}
+					}
+				});
+			}
+
+			function saveMatchsScore() {
+				$("tr.score").each(function() {
+					var currentId = $(this).attr("id");
+					var first = $("#first_" + currentId).val();
+					var second = $("#second_" + currentId).val();
+					all_bets[currentId]["score"]["first"] = Number(first);
+					all_bets[currentId]["score"]["second"] = Number(second);
+				});
+				var updateForm = new FormData();
+				updateForm.append('all_bets', JSON.stringify(all_bets));
+				$.ajax({
+					url: '/save_bets.html',
+					type: 'POST',
+					data: updateForm,
+					processData: false,
+					contentType: false,
+					success: betsSaved,
+					error: betsNotSaved
+				});
+			}
+
+			function updateAllMatchs() {
+				checkAllMatchs();
+			}
+
+			function dateHasChanged() {
+				currentDate = $("#eventDate").val();
+				$('#eventTableDiv').load('/static/matchs/' + currentDate + '_en.html',updateAllMatchs);
+			}
+		</script>
+	</head>
+	<body>
+		<div class="container" style="padding: 0 15px;">
+			{% if request.user.is_authenticated and request.user.is_superuser %}
+				<div class="row">
+					<div class="col-lg-10">
+						<h1 class="">Editer les résultats</h1>
+			  			<p class="lead">C'est par ici pour changer les résultats des matchs.
+
+					</div>
+					<a href="/index.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Retour à l'index">
+						<span class="glyphicon glyphicon-home"></span>
+					</a>
+					<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Quitter">
+						<span class="glyphicon glyphicon-off"></span>
+					</a>
+				</div>
+				<div class="row">&nbsp;</div>
+				<div class="row">
+					<div class="col-lg-2">
+						<input type="text" class="form-control no-enter text-center" id="eventDate" name="eventDate" placeholder="Event date" onchange="dateHasChanged()">
+					</div>
+				</div>
+				<div class="row">&nbsp;</div>
+				<div class="row" id="eventTableDiv">
+				</div>
+				<div class="row">&nbsp;</div>
+				<div class="row">
+					<button type="button" class="btn btn-success btn-lg col-lg-offset-10">Sauvegarder</button>
+				</div>
+			{% else %}
+				<div class="row">
+					<div class="col-lg-11">
+						<h1 class="">Oups!</h1>
+			  			<p class="lead">Vous n'auriez jamais dû arriver sur cette page.
+			  			<p class="lead">Merci de revenir à l'<a href="/index.html">acceuil</a> ou de vous authentifier.
+					</div>
+				</div>
+
+				<div class="row text-center">
+		    		<a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Login</a>
+		    	</div>
+		    	<div style="height: 400px;">&nbsp;</div>
+		    	<div class="row h6">Ce site utilise des icônes en provenance de <a href="http://glyphicons.com/">GlyphIcons</a></div>
+			{% endif %}
+		</div>
+
+	</body>

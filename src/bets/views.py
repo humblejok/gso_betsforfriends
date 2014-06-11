@@ -9,6 +9,7 @@ import datetime
 from datetime import datetime as dt
 from seq_common.utils import dates
 from django.utils import simplejson
+import traceback
 
 def index(request):
     if request.user.is_authenticated and request.user.id!=None:
@@ -27,7 +28,7 @@ def index(request):
         begin = dt.combine(datetime.date.today(), dt.min.time())
         end = dt.combine(dates.AddDay(begin, 14), dt.max.time())
         admin_groups = Group.objects.filter(Q(owners__id__exact=request.user.id)).order_by('name')
-        member_groups = Group.objects.filter(Q(members__id__exact=request.user.id)).order_by('name')
+        member_groups = Group.objects.filter(Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id)).order_by('name')
         all_dates = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when').dates('when','day')
         all_dates = [a_date.strftime('%Y-%m-%d') for a_date in all_dates]
         all_matches = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when')
@@ -85,18 +86,74 @@ def save_bets(request):
                 message = "Un ou plusieurs matchs ont deja commence."
     return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
 
+def group_edit(request):
+    redirect('index.html')
+    
+def group_view(request):
+    if request.user.is_authenticated and request.user.id!=None:
+        group_id = request.GET['group_id']
+        user = User.objects.get(id=request.user.id)
+        try:
+            group = Group.objects.get(Q(id=group_id), Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id))
+            all_members = list(group.members.all()) + list(group.owners.all())
+            for member in all_members:
+                rank = UserRanking.objects.filter(owner__id=user.id, group__id=group.id)
+                if not rank.exists():
+                    rank = UserRanking()
+                    rank.owner = member
+                    rank.group = group
+                    rank.overall_score = 0
+                    rank.rank = None
+                    rank.save()
+                else:
+                    rank = rank[0]
+            all_users = list(group.members.values_list('id', flat=True)) + list(group.owners.values_list('id', flat=True))
+            ranking = UserRanking.objects.filter(owner__id__in=all_users, group__id=group.id)
+            your_rank = UserRanking.objects.get(owner__id=user.id, group__id=group.id)
+            context = {'group': group, 'ranking':ranking, 'yours': your_rank}
+            return render(request,'group_view.html', context)
+        except:
+            traceback.print_exc()
+            redirect('index.html')
+    else:
+        redirect('index.html')
+
+def group_join(request):
+    group_name = request.POST['group_name']
+    user = User.objects.get(id=request.user.id)
+    if Group.objects.filter(name=group_name).exists():
+        print "Group found"
+        if Group.objects.filter(Q(name=group_name), Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id)).exists():
+            return HttpResponse('{"result": true, "message":"Group already joined!"}', content_type="application/json");
+        else:
+            joined_group = Group.objects.get(name=group_name)
+            joined_group.members.add(user)
+            joined_group.save()
+        return HttpResponse('{"result": true, "message":"Group joined!"}', content_type="application/json");
+    else:
+        print "Group not found"
+        return HttpResponse('{"result": false, "message":"Group doesn''t exist!"}', content_type="application/json");
+
 def group_create(request):
     group_name = request.POST['group_name']
+    event_id = request.POST['event_id']
     user = User.objects.get(id=request.user.id)
     if Group.objects.filter(name=group_name).exists():
         return HttpResponse('{"result": false, "message":"Group name already exists!"}', content_type="application/json");
     else:
         group = Group()
+        group.many_fields = {}
         group.name = group_name
+        group.event = BettableEvent.objects.get(id=event_id)
         group.save()
         group.owners.add(user)
         group.save()
         return HttpResponse('{"result": true, "message":"No problem occured."}', content_type="application/json");
-    
-def group_show(request):
-    None
+
+def match_edit(request):
+    begin = dt.combine(dates.AddDay(datetime.date.today(),-180), dt.min.time())
+    end = dt.combine(dates.AddDay(datetime.date.today(), 14), dt.max.time())
+    all_dates = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when').dates('when','day')
+    all_dates = [a_date.strftime('%Y-%m-%d') for a_date in all_dates]
+    context = {'all_dates': all_dates}
+    return render(request,'match_edit.html', context)

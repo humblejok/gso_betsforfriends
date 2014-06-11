@@ -24,7 +24,6 @@
 				} else {
 					return [false, "", "unAvailable"];
 				}
-
 			}
 
 
@@ -54,9 +53,21 @@
 				dateHasChanged();
 			   });
 
+			function groupNotJoined(e) {
+				$(".label-warning").text("Ce groupe n'existe pas ou n'est pas public.");
+			}
+
+			function groupJoined(e) {
+				if (e.result) {
+					$(".modal").modal('hide');
+					location.reload();
+				} else {
+					groupNotCreated(e);
+				}
+			}
 
 			function groupNotCreated(e) {
-				$(".label-warning").text("A group with this name already exists.");
+				$(".label-warning").text("Un groupe avec ce nom existe déjà.");
 			}
 
 			function groupCreated(e) {
@@ -80,9 +91,24 @@
 				}
 			}
 
-			function createGroup(name) {
+			function joinGroupFct(name) {
+				var joinGroup = new FormData();
+				joinGroup.append('group_name', name);
+				$.ajax({
+					url: '/group_join.html',
+					type: 'POST',
+					data: joinGroup,
+					processData: false,
+					contentType: false,
+					success: groupJoined,
+					error: groupNotJoined
+				});
+			}
+
+			function createGroup(name, eventId) {
 				var createForm = new FormData();
 				createForm.append('group_name', name);
+				createForm.append('event_id', eventId);
 				$.ajax({
 					url: '/group_create.html',
 					type: 'POST',
@@ -166,12 +192,20 @@
 		<div class="container" style="padding: 0 15px;">
 			{% if request.user.is_authenticated %}
 				<div class="row">
-					<div class="col-lg-11">
+					<div class="col-lg-10">
 						<h1 class="">Bienvenue {{ request.user.first_name }} {{ request.user.last_name }}</h1>
-			  			<p class="lead">{% if global_rank.rank %}Vous êtes classé <blue>{{global_rank.rank}}</blue> avec un score de <blue>{{global_rank.overall_score}}</blue>{% else %}Vous n'avez pas encore de classement.{% endif %}
+			  			<p class="lead">{% if global_rank.rank %}Vous êtes classé <span class="label label-info">{{global_rank.rank}}</span> avec un score de <span class="label label-info">{{global_rank.overall_score}}</span>{% else %}Vous n'avez pas encore de classement.{% endif %}
 
 					</div>
-					<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
+					{% if request.user.is_superuser %}
+					<a href="/match_edit.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Gérer les matchs">
+						<span class="glyphicon glyphicon-dashboard"></span>
+					</a>
+					{% endif %}
+					<a href="/index.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Retour à l'index">
+						<span class="glyphicon glyphicon-home"></span>
+					</a>
+					<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Quitter">
 						<span class="glyphicon glyphicon-off"></span>
 					</a>
 				</div>
@@ -180,15 +214,91 @@
 					<div class="col-lg-2">
 						<input type="text" class="form-control no-enter text-center" id="eventDate" name="eventDate" placeholder="Event date" onchange="dateHasChanged()">
 					</div>
+					{% if member_groups %}
+					<div class="col-lg-2 btn-group">
+						<button type="button" class="btn btn-default dropdown-toggle col-lg-11" data-toggle="dropdown">Mes groupes <span class="caret"></span></button>
+						<ul class="dropdown-menu" role="menu">
+							{% for group in member_groups %}
+								<li><a href="/group_view.html?group_id={{group.id}}">{{group.name}}</a></li>
+							{% endfor %}
+						</ul>
+					</div>
+					{% endif %}
+					{% if admin_groups %}
+					<div class="col-lg-2 btn-group">
+						<button type="button" class="btn btn-default dropdown-toggle col-lg-11" data-toggle="dropdown">Gérer <span class="caret"></span></button>
+						<ul class="dropdown-menu" role="menu">
+							{% for group in admin_groups %}
+								<li><a href="/group_edit.html?group_id={{group.id}}">{{group.name}}</a></li>
+							{% endfor %}
+						</ul>
+					</div>
+					{% endif %}
 				</div>
 				<div class="row">&nbsp;</div>
 				<div class="row" id="eventTableDiv">
 				</div>
 				<div class="row">&nbsp;</div>
 				<div class="row">
-	  				<button type="button" class="btn btn-primary col-lg-offset-9">Rejoindre un groupe</button>
+	  				<a href="#modal_join" class="btn btn-primary col-lg-offset-9" role="button" data-toggle="modal" data-placement="bottom" title="Rejoindre un groupe existant">Rejoindre un groupe</a>
 	  				<a href="#modal_create" class="btn btn-success" role="button" data-toggle="modal" data-placement="bottom" title="Créer un nouveau groupe dans lequel vous pourrez inviter vos amis">Créer un groupe</a>
 	  			</div>
+				<div class="modal fade" id="modal_create" tabindex="-1" role="dialog" aria-labelledby="modal_create" aria-hidden="true">
+					<div class="modal-dialog">
+						<div class="modal-content">
+							<div class="modal-header">
+								<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+								<h4 class="modal-title" id="modal_create">Créer un nouveau groupe</h4>
+							</div>
+							<div class="modal-body">
+								<form id="newGroup" role="form" class="form-horizontal" action="/group_create.html" method="POST" onsubmit="">{% csrf_token %}
+									<div class="form-group">
+										<label for="groupName" class="col-lg-2 col-lg-offset-1">Nom:</label>
+										<input id="groupName" class="col-lg-6 no-enter" name="groupName" type="text" placeholder="Insérer le nom du groupe ici">
+										<a type="button" class="btn btn-xs btn-default col-lg-2 col-lg-offset-1" onclick="createGroup(newGroup.groupName.value, newGroup.attachedEvent.value)">Enregistrer</a>
+									</div>
+									<div class="form-group">
+										<label for="attachedEvent" class="col-lg-2 col-lg-offset-1">Evénement:</label>
+										<div class="col-lg-6">
+											<select class="no-enter" id="attachedEvent" name="attachedEvent">
+												{% for event in events %}
+													<option value="{{event.id}}">{{event.name}}</option>
+												{% endfor %}
+											</select>
+										</div>
+									</div>
+									<span class="label label-warning col-lg-12"></span>
+								</form>
+							</div>
+							<div class="modal-footer">
+								<button type="button" class="btn btn-default" data-dismiss="modal">Fermer</button>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal fade" id="modal_join" tabindex="-1" role="dialog" aria-labelledby="modal_join" aria-hidden="true">
+					<div class="modal-dialog">
+						<div class="modal-content">
+							<div class="modal-header">
+								<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+								<h4 class="modal-title" id="modal_join">Rejoindre un groupe</h4>
+							</div>
+							<div class="modal-body">
+								<form id="joinGroup" role="form" class="form-horizontal" action="/group_join.html" method="POST" onsubmit="">{% csrf_token %}
+									<div class="form-group">
+										<label for="groupName" class="col-lg-2 col-lg-offset-1">Nom:</label>
+										<input id="groupName" class="col-lg-6 no-enter" name="groupName" type="text" placeholder="Insérer le nom du groupe ici">
+										<a type="button" class="btn btn-xs btn-default col-lg-2 col-lg-offset-1" onclick="joinGroupFct(joinGroup.groupName.value)">Rejoindre</a>
+									</div>
+									<span class="label label-warning col-lg-12"></span>
+								</form>
+							</div>
+							<div class="modal-footer">
+								<button type="button" class="btn btn-default" data-dismiss="modal">Fermer</button>
+							</div>
+						</div>
+					</div>
+				</div>
 			{% else %}
 				<div class="row">
 					<div class="col-lg-11">
@@ -204,40 +314,6 @@
 		    	<div style="height: 400px;">&nbsp;</div>
 		    	<div class="row h6">Ce site utilise des icônes en provenance de <a href="http://glyphicons.com/">GlyphIcons</a></div>
 			{% endif %}
-		</div>
-
-		<div class="modal fade" id="modal_create" tabindex="-1" role="dialog" aria-labelledby="modal_create" aria-hidden="true">
-			<div class="modal-dialog">
-				<div class="modal-content">
-					<div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-						<h4 class="modal-title" id="modal_create">Créer un nouveau groupe</h4>
-					</div>
-					<div class="modal-body">
-						<form id="newGroup" role="form" class="form-horizontal" action="/group_create.html" method="POST" onsubmit="">{% csrf_token %}
-							<div class="form-group">
-								<label for="groupName" class="col-lg-2 col-lg-offset-1">Nom:</label>
-								<input id="groupName" class="col-lg-6 no-enter" name="groupName" type="text" placeholder="Insérer le nom du groupe ici">
-								<a type="button" class="btn btn-xs btn-default col-lg-1 col-lg-offset-1" onclick="createGroup(newGroup.groupName.value)">Save</a>
-							</div>
-							<div class="form-group">
-								<label for="attachedEvent" class="col-lg-2 col-lg-offset-1">Evénement:</label>
-								<div class="col-lg-4">
-									<select class="form-control no-enter" id="attachedEvent" name="attachedEvent">
-										{% for event in events %}
-											<option value="{{event.id}}">{{event.name}}</option>
-										{% endfor %}
-									</select>
-								</div>
-							</div>
-							<span class="label label-warning col-lg-12"></span>
-						</form>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-					</div>
-				</div>
-			</div>
 		</div>
 
 	</body>
