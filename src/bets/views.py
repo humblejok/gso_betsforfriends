@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 import datetime
 from datetime import datetime as dt
 from seq_common.utils import dates
-import simplejson
+from django.utils import simplejson
 
 def index(request):
     if request.user.is_authenticated and request.user.id!=None:
