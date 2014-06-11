@@ -31,8 +31,8 @@ def index(request):
         now = datetime.datetime.today()
         begin = dt.combine(datetime.date.today(), dt.min.time())
         end = dt.combine(dates.AddDay(begin, 14), dt.max.time())
-        admin_groups = Group.objects.filter(Q(owners__id__exact=request.user.id)).order_by('name')
-        member_groups = Group.objects.filter(Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id)).order_by('name')
+        admin_groups = Group.objects.filter(Q(owners__id__exact=request.user.id)).distinct().order_by('name')
+        member_groups = Group.objects.filter(Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id)).distinct().order_by('name')
         all_dates = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when').dates('when','day')
         all_dates = [a_date.strftime('%Y-%m-%d') for a_date in all_dates]
         all_matches = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when')
@@ -98,24 +98,27 @@ def group_view(request):
         group_id = request.GET['group_id']
         user = User.objects.get(id=request.user.id)
         try:
-            group = Group.objects.get(Q(id=group_id), Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id))
-            all_members = list(group.members.all()) + list(group.owners.all())
-            for member in all_members:
-                rank = UserRanking.objects.filter(owner__id=user.id, group__id=group.id)
-                if not rank.exists():
-                    rank = UserRanking()
-                    rank.owner = member
-                    rank.group = group
-                    rank.overall_score = 0
-                    rank.rank = None
-                    rank.save()
-                else:
-                    rank = rank[0]
-            all_users = list(group.members.values_list('id', flat=True)) + list(group.owners.values_list('id', flat=True))
-            ranking = UserRanking.objects.filter(owner__id__in=all_users, group__id=group.id)
-            your_rank = UserRanking.objects.get(owner__id=user.id, group__id=group.id)
-            context = {'group': group, 'ranking':ranking, 'yours': your_rank}
-            return render(request,'group_view.html', context)
+            group = Group.objects.get(id=group_id)
+            if group.members.filter(id=user.id).exists() or group.owners.filter(id=user.id).exists():
+                all_members = list(group.members.all()) + list(group.owners.all())
+                for member in all_members:
+                    rank = UserRanking.objects.filter(owner__id=user.id, group__id=group.id)
+                    if not rank.exists():
+                        rank = UserRanking()
+                        rank.owner = member
+                        rank.group = group
+                        rank.overall_score = 0
+                        rank.rank = None
+                        rank.save()
+                    else:
+                        rank = rank[0]
+                all_users = list(group.members.values_list('id', flat=True)) + list(group.owners.values_list('id', flat=True))
+                ranking = UserRanking.objects.filter(owner__id__in=all_users, group__id=group.id)
+                your_rank = UserRanking.objects.get(owner__id=user.id, group__id=group.id)
+                context = {'group': group, 'ranking':ranking, 'yours': your_rank}
+                return render(request,'group_view.html', context)
+            else:
+                redirect('index.html')
         except:
             traceback.print_exc()
             redirect('index.html')
