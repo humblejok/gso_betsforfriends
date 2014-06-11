@@ -102,7 +102,7 @@ def group_view(request):
             if group.members.filter(id=user.id).exists() or group.owners.filter(id=user.id).exists():
                 all_members = list(group.members.all()) + list(group.owners.all())
                 for member in all_members:
-                    rank = UserRanking.objects.filter(owner__id=user.id, group__id=group.id)
+                    rank = UserRanking.objects.filter(owner__id=member.id, group__id=group.id)
                     if not rank.exists():
                         rank = UserRanking()
                         rank.owner = member

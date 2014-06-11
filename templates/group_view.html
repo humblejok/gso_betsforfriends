@@ -47,7 +47,7 @@
 							{% for rank in ranking %}
 							<tr>
 								<td class="text-center {% if rank.id == yours.id %}label-info{% endif %}">{% if rank.rank %}{{ rank.rank }}{% else %} - {% endif %}</td>
-								<td class="{% if rank.id == yours.id %}label-info{% endif %}">{{ rank.owner.username }}</td>
+								<td class="{% if rank.id == yours.id %}label-info{% endif %}">{{ request.user.first_name }} {{ request.user.last_name }}</td>
 								<td class="text-center {% if rank.id == yours.id %}label-info{% endif %}">{{ rank.overall_score }}</td>
 							</tr>
 							{% endfor %}
