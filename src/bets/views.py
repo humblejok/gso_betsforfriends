@@ -24,6 +24,10 @@ def index(request):
             initial_ranking.save()
             rankings = UserRanking.objects.filter(owner__id=user.id)
         global_ranking = UserRanking.objects.filter(owner__id=user.id, group=None)
+        if global_ranking.exists():
+            global_ranking = global_ranking[0]
+        else:
+            global_ranking = None
         now = datetime.datetime.today()
         begin = dt.combine(datetime.date.today(), dt.min.time())
         end = dt.combine(dates.AddDay(begin, 14), dt.max.time())
@@ -58,7 +62,7 @@ def index(request):
         context = {}
     return render(request,'index.html', context)
 
-def save_bets(request):
+def bets_save(request):
     if request.user.is_authenticated and request.user.id!=None:
         message = "Aucun probleme."
         user = User.objects.get(id=request.user.id)
@@ -150,7 +154,28 @@ def group_create(request):
         group.save()
         return HttpResponse('{"result": true, "message":"No problem occured."}', content_type="application/json");
 
-def match_edit(request):
+def matchs_save(request):
+    if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
+        message = "Aucun probleme."
+        all_matchs = simplejson.loads(request.POST['all_matchs'])
+        for match in all_matchs:
+            LOGGER.info("Working on match " + str(match))
+            web_match = all_matchs[match]
+            py_match = Match.objects.get(id=match)
+            if py_match.result==None:
+                score = Score()
+            else:
+                score = Score.objects.get(id=py_match.result.id)
+            score.first = web_match[u'score'][u'first']
+            score.second = web_match[u'score'][u'second']
+            score.name = "Official score " + py_match.name
+            score.save()
+                
+            py_match.result = score
+            py_match.save()
+    return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
+
+def matchs_edit(request):
     begin = dt.combine(dates.AddDay(datetime.date.today(),-180), dt.min.time())
     end = dt.combine(dates.AddDay(datetime.date.today(), 14), dt.max.time())
     all_dates = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when').dates('when','day')

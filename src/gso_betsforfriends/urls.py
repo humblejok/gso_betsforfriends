@@ -14,9 +14,12 @@ urlpatterns = patterns('',
     url(r'^group_join.html$', 'bets.views.group_join', name='group_join'),
     url(r'^group_view.html$', 'bets.views.group_view', name='group_view'),
     
-    url(r'^match_edit.html$', 'bets.views.match_edit', name='match_edit'),
+    url(r'^matchs_edit.html$', 'bets.views.matchs_edit', name='matchs_edit'),
+    url(r'^matchs_save.html$', 'bets.views.matchs_save', name='matchs_save'),
     
-    url(r'^save_bets.html$', 'bets.views.save_bets', name='save_bets'),
+    url(r'^bets_save.html$', 'bets.views.bets_save', name='bets_save'),
+    
+    
     
     url(r'^$', 'bets.views.index', name='index'),
 )

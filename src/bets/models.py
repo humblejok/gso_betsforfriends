@@ -115,6 +115,7 @@ def populate_model_from_xlsx(model_name, xlsx_file):
             field_info.short_name = header[i]
             field_info.name = header[i]
             instance.set_attribute('excel', field_info, value)
+        instance.finalize()
         if instance.name==None:
             break
         else:
@@ -140,25 +141,37 @@ def compute_event_ranking():
         for user in users:
             LOGGER.info("\tWorking on user " + str(user.username))
             for match in event.matchs.filter(result__isnull=False):
-                LOGGER.info("\t\tWorking on match " + str(match.name))
                 score = 0
+                LOGGER.info("\t\tWorking on match " + str(match.name))
                 bet = Bet.objects.filter(match__id=match.id, owner__id=user.id)
-                if bet.winner==None and match.winner==None:
-                    score += 3
-                elif bet.winner!=None and match.winner!=None:
-                    score += 3 if bet.winner.id==match.winner.id else 0
-                score += 1 if bet.result.first==match.result.first else 0
-                score += 1 if bet.result.second==match.result.second else 0
-                if not events_ranking.has_key(event.id):
-                    events_ranking[event.id] = {}
-                if not events_ranking[event.id].has_key(user.id):
-                    rank = EventRanking()
-                    rank.event = event
-                    rank.owner = user
-                    rank.overall_score = 0
-                    rank.rank = None
-                    events_ranking[event.id][user.id] = rank
-                events_ranking[event.id][user.id].overall_score += score
+                winner = None
+                if match.result.first!=match.result.second:
+                    winner = match.first if match.result.first>match.result.second else match.second
+                LOGGER.info("\t\tWinner is " + str(winner))
+                if bet.exists():
+                    bet = bet[0]
+                    if bet.winner==None and winner==None:
+                        score += 3
+                        LOGGER.info("\t\tResult: Even found = " + str(score))
+                    elif bet.winner!=None and winner!=None:
+                        score += 3 if bet.winner.id==winner.id else 0
+                        LOGGER.info("\t\tResult: Winner/Looser = " + str(score))
+                    score += 1 if bet.result.first==match.result.first else 0
+                    LOGGER.info("\t\tResult: First score = " + str(score))
+                    score += 1 if bet.result.second==match.result.second else 0
+                    LOGGER.info("\t\tResult: Second score = " + str(score))
+                    if not events_ranking.has_key(event.id):
+                        events_ranking[event.id] = {}
+                    if not events_ranking[event.id].has_key(user.id):
+                        rank = EventRanking()
+                        rank.event = event
+                        rank.owner = user
+                        rank.overall_score = 0
+                        rank.rank = None
+                        events_ranking[event.id][user.id] = rank
+                        LOGGER.info("\t\tResult: FINAL CREATION = " + str(events_ranking[event.id][user.id].overall_score))
+                    events_ranking[event.id][user.id].overall_score += score
+                    LOGGER.info("\t\tResult: FINAL score = " + str(events_ranking[event.id][user.id].overall_score))
     for event_id in events_ranking.keys():
         rank_list(events_ranking[event_id].values())
 
@@ -180,19 +193,48 @@ def compute_group_ranking():
             ranks.append(ranking)
             event_rank = EventRanking.objects.filter(event__id=group.event.id, owner__id=user.id)
             if event_rank.exists():
+                event_rank = event_rank[0]
                 ranking.overall_score = event_rank.overall_score
                 ranking.save()
             else:
-                LOGGER.warn("User [" + user.id +"] is not ranked in event:" + str(group.event.name))
+                LOGGER.warn("User [" + user.id +"] has no rank in event:" + str(group.event.name))
         rank_list(ranks)
 
 def compute_overall_ranking():
-    global_scores = EventRanking.objects.values('user').annotate(global_score= Sum('overall_score'))
-    
+    global_scores = EventRanking.objects.values('owner').annotate(global_score = Sum('overall_score'))
+    ranks = []
+    for entry in global_scores:
+        ranking = UserRanking.objects.filter(owner__id=entry['owner'], group=None)
+        if ranking.exists():
+            ranking = ranking[0]
+        else:
+            ranking = UserRanking()
+            ranking.owner = User.objects.get(id=entry['owner'])
+            ranking.group = None
+            ranking.overall_score = 0
+            ranking.rank = None
+            ranking.save()
+        ranking.overall_score = entry['global_score']
+        ranking.save()
+        ranks.append(ranking)
+    rank_list(ranks)
 
 class CoreModel(models.Model):
 
     many_fields = {}
+    
+    def finalize(self):
+        self.save()
+        # TODO Loop on many to many only
+        for field_name in self._meta.get_all_field_names():
+            try:
+                if self._meta.get_field(field_name).get_internal_type()=='ManyToManyField':
+                    if self.many_fields.has_key(field_name):
+                        values = list(self.many_fields[field_name])
+                        setattr(self, field_name, values)
+            except FieldDoesNotExist:
+                None
+        self.save()
 
     def get_editable_fields(self):
         values = []
@@ -212,7 +254,10 @@ class CoreModel(models.Model):
         return []
     
     def get_identifier(self):
-        return 'name'
+        for field in self.get_fields():
+            if field=='name':
+                return 'name'
+        return 'id'
     
     def list_values(self):
         values = []
@@ -245,8 +290,12 @@ class CoreModel(models.Model):
                 if self._meta.get_field(field_info.short_name).get_internal_type()=='ManyToManyField':
                     if not self.many_fields.has_key(field_info.short_name):
                         self.many_fields[field_info.short_name] = []
-                    foreign = self._meta.get_field(field_info.short_name).rel.to                
-                    self.many_fields[field_info.short_name].append(foreign.retrieve_or_create(source, field_info.name, string_value))
+                    foreign = self._meta.get_field(field_info.short_name).rel.to
+                    elements = string_value.split(',')
+                    for element in elements:
+                        foreign_entity = foreign.retrieve_or_create(source, field_info.name, element)
+                        print foreign_entity
+                        self.many_fields[field_info.short_name].append(foreign_entity)
                 elif self._meta.get_field(field_info.short_name).get_internal_type()=='DateField' or self._meta.get_field(field_info.short_name).get_internal_type()=='DateTimeField':
                     try:
                         dt = datetime.datetime.strptime(string_value,'%m/%d/%Y')

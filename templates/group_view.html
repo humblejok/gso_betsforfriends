@@ -30,7 +30,7 @@
 					<div class="col-lg-10">
 						<h1 class="">{{group.name}}</h1>
 						<p class="lead">Ce groupe concerne l'événement: {{group.event.name}}.<br/>
-			  			{% if yours.rank %}Dans ce groupe, vous êtes classé <span class="label label-info">{{yours.rank}}</span> avec un score de <span class="label label-info">{{yours.overall_score}}</span>{% else %}Vous n'avez pas encore de classement dans ce groupe.{% endif %}
+			  			{% if yours.rank %}Dans ce groupe, vous êtes au rang <span class="label label-info">{{yours.rank}}</span> avec un score de <span class="label label-info">{{yours.overall_score}}</span>.{% else %}Vous n'avez pas encore de classement dans ce groupe.{% endif %}
 					</div>
 					<a href="/index.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Retour à l'index">
 						<span class="glyphicon glyphicon-home"></span>
