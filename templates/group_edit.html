@@ -1,8 +1,9 @@
 {% load socialaccount %}
+{% load bets_tags %}
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>Bets for friends</title>
+		<title>{{group.name}}</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
 		<link href="/static/themes/redmond/jquery-ui.min.css" rel="stylesheet" type="text/css"/>
@@ -21,27 +22,82 @@
 				});
 				csrftoken = getCookie('csrftoken');
 			});
+
+			function userNotRemoved(e) {
+				alert("An error occured while saving [" + e.message + "].");
+			}
+
+			function userRemoved(e) {
+				if (e.result) {
+					location.reload();
+				} else {
+					userNotRemoved(e);
+				}
+			}
+
+			function removeUser(userId) {
+				var userRemoveForm = new FormData();
+				userRemoveForm.append('user_id', userId);
+				userRemoveForm.append('group_id', {{group.id}});
+				$.ajax({
+					url: '/group_remove_user.html',
+					type: 'POST',
+					data: userRemoveForm,
+					processData: false,
+					contentType: false,
+					success: userRemoved,
+					error: userNotRemoved
+				});
+			}
 		</script>
 	</head>
 	<body>
 		<div class="container" style="padding: 0 15px;">
 			{% if request.user.is_authenticated %}
 				<div class="row">
-					<div class="col-lg-11">
+					<div class="col-lg-10">
 						<h1 class="">{{group.name}}</h1>
-			  			<p class="lead">{% if yours.rank %}Dans ce groupe, vous êtes classé <blue>{{yours.rank}}</blue> avec un score de <blue>{{yours.overall_score}}</blue>{% else %}Vous n'avez pas encore de classement dans ce groupe.{% endif %}
+						<p class="lead">Ce groupe concerne l'événement: {{group.event.name}}.<br/>
+			  			{% if yours.rank %}Dans ce groupe, vous êtes au rang <span class="label label-info">{{yours.rank}}</span> avec un score de <span class="label label-info">{{yours.overall_score}}</span>.{% else %}Vous n'avez pas encore de classement dans ce groupe.{% endif %}
 					</div>
-					<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Log off">
+					<a href="/index.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Retour à l'index">
+						<span class="glyphicon glyphicon-home"></span>
+					</a>
+					<a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Quitter">
 						<span class="glyphicon glyphicon-off"></span>
 					</a>
 				</div>
 				<div class="row">&nbsp;</div>
+				<div class="row">
+					<div class="col-lg-8">
+						<table class="table table-condensed table-bordered">
+							<tr><th class="text-center">Rang</th><th class="text-center">Surnom</th><th class="text-center">Points</th>{% if allow_amount %}<th class="text-center">Action</th>{% endif %}</tr>
+							{% for rank in ranking %}
+							<tr>
+								<td class="text-center {% if rank.id == yours.id %}label-info{% endif %}">{% if rank.rank %}{{ rank.rank }}{% else %} - {% endif %}</td>
+								<td class="{% if rank.id == yours.id %}label-info{% endif %}">{{ rank.owner.first_name }} {{ rank.owner.last_name }}</td>
+								<td class="text-center {% if rank.id == yours.id %}label-info{% endif %}">{{ rank.overall_score }}</td>
+								<td class="text-center"><button type="button" class="btn btn-warning btn-sm col-lg-12{% if rank.id == yours.id %} invisible{% endif %}" onclick="removeUser({{rank.owner.id}})">Retirer</button></td>
+							</tr>
+							{% endfor %}
+						</table>
+					</div>
+					<div class="col-lg-4">Les points sont attribués comme suit:
+						<ul>
+							<li>1 point pour un pronostic correct du vainqueur ou du match nul.</li>
+							<li>3 points pour un score correctement trouvé.</li>
+						</ul>
+					</div>
+				</div>
+				<div class="row h4">
+					Vous pouvez inviter des personnes dans ce groupe en cliquant <a href="mailto:?Subject=Venez me rejoindre sur unpari.fr&body=Bonjour,%0D%0AVenez me rejoindre sur unpari.fr.%0D%0AIl suffit de rentrer dans le site en utilisant son compte Facebook et de cliquer sur Rejoindre un groupe.%0D%0AIl vous faut alors de saisir le nom suivant:{{group.name}}.%0D%0A%0D%0AMerci,%0D%0A{{user.last_name}} {{user.first_name}}" target="_top">sur ce lien</a>.
+				</div>
 			{% else %}
 				<div class="row">
 					<div class="col-lg-11">
 						<h1 class="">Oups!</h1>
 			  			<p class="lead">Vous n'auriez jamais dû arriver sur cette page.
-			  			<p class="lead">Merci de revenir à l'<a href="/index.html">acceuil</a> et de vous authentifier.
+			  			<p class="lead">Merci de revenir à l'<a href="/index.html">acceuil</a> ou de vous authentifier.
 					</div>
 				</div>
 

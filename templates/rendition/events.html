@@ -1,5 +1,5 @@
 {% load bets_tags %}
-<table class="table col-lg-7">
+<table id="eventsTable" class="table col-lg-7">
 	{% for event in events %}
 	<tr class="info">
 		<td colspan=2>
@@ -15,7 +15,7 @@
 		<td class="col-lg-1 text-center"><input id="first_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllBets()"></input></td>
 		<td class="col-lg-1 text-center"><input id="second_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllBets()"></input></td>
 		<td id="label_second_{{event.id}}" class="col-lg-2 text-center">{{event.second}}</td>
-		<td class="col-lg-1 text-center"><input id="amount_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllBets()"></input></td>
+		<td class="col-lg-1 text-center"><input id="amount_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllBets()" value="0"></input></td>
 	</tr>
 	{% endfor %}
 </table>

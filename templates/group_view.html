@@ -1,4 +1,5 @@
 {% load socialaccount %}
+{% load bets_tags %}
 <!DOCTYPE html>
 <html lang="en">
 	<head>
@@ -43,20 +44,21 @@
 				<div class="row">
 					<div class="col-lg-8">
 						<table class="table table-condensed table-bordered">
-							<tr><th class="text-center">Rang</th><th class="text-center">Surnom</th><th class="text-center">Points</th></tr>
+							<tr><th class="text-center">Rang</th><th class="text-center">Surnom</th><th class="text-center">Points</th>{% if allow_amount %}<th class="text-center">Mise: bloquée/totale</th>{% endif %}</tr>
 							{% for rank in ranking %}
 							<tr>
 								<td class="text-center {% if rank.id == yours.id %}label-info{% endif %}">{% if rank.rank %}{{ rank.rank }}{% else %} - {% endif %}</td>
 								<td class="{% if rank.id == yours.id %}label-info{% endif %}">{{ rank.owner.first_name }} {{ rank.owner.last_name }}</td>
 								<td class="text-center {% if rank.id == yours.id %}label-info{% endif %}">{{ rank.overall_score }}</td>
+								{% if allow_amount %}<td class="text-center{% if rank.id == yours.id %} label-info{% endif %}">{% with total=betted_amounts|get_dict_key:rank.owner.id locked=locked_amounts|get_dict_key:rank.owner.id%}{% if locked %}{{locked}}{% else %}0{% endif %} / {% if total %}{{total}}{% else %}0{% endif %}{% endwith %}</td>{% endif %}
 							</tr>
 							{% endfor %}
 						</table>
 					</div>
 					<div class="col-lg-4">Les points sont attribués comme suit:
 						<ul>
-							<li>3 points pour un pronostic correct du vainqueur ou du match nul.</li>
-							<li>1 point supplémentaire par score correctement trouvé.</li>
+							<li>1 point pour un pronostic correct du vainqueur ou du match nul.</li>
+							<li>3 points pour un score correctement trouvé.</li>
 						</ul>
 					</div>
 				</div>

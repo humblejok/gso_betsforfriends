@@ -13,13 +13,16 @@ urlpatterns = patterns('',
     url(r'^group_create.html$', 'bets.views.group_create', name='group_create'),
     url(r'^group_join.html$', 'bets.views.group_join', name='group_join'),
     url(r'^group_view.html$', 'bets.views.group_view', name='group_view'),
+    url(r'^group_edit.html$', 'bets.views.group_edit', name='group_edit'),
+    url(r'^group_remove_user.html$', 'bets.views.group_remove_user', name='group_remove_user'),
     
     url(r'^matchs_edit.html$', 'bets.views.matchs_edit', name='matchs_edit'),
     url(r'^matchs_save.html$', 'bets.views.matchs_save', name='matchs_save'),
+    url(r'^matchs_compute.html$', 'bets.views.matchs_compute', name='matchs_compute'),
     
     url(r'^bets_save.html$', 'bets.views.bets_save', name='bets_save'),
     
     
     
-    url(r'^$', 'bets.views.index', name='index'),
+    url(r'^$', 'bets.views.index', name='home'),
 )

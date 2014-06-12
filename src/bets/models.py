@@ -50,9 +50,12 @@ def generate_events():
         with open(outfile,'w') as o:
             o.write(rendition.encode('utf-8'))
             
-def generate_matchs():
+def generate_matchs(match_ids=None):
     now = dt.combine(datetime.date.today(), dt.min.time())
-    all_dates = Match.objects.filter(when__gte=now).order_by('when').dates('when','day')
+    if match_ids!=None:
+        all_dates = Match.objects.filter(id__in=match_ids).order_by('when').dates('when','day')
+    else:
+        all_dates = Match.objects.filter(when__gte=now).order_by('when').dates('when','day')
     template = loader.get_template('rendition/matchs.html')
     for a_date in all_dates:
         events = Match.objects.filter(when__gte=dt.combine(a_date, dt.min.time()), when__lte=dt.combine(a_date, dt.max.time())).order_by('when')
@@ -151,15 +154,13 @@ def compute_event_ranking():
                 if bet.exists():
                     bet = bet[0]
                     if bet.winner==None and winner==None:
-                        score += 3
+                        score += 1
                         LOGGER.info("\t\tResult: Even found = " + str(score))
                     elif bet.winner!=None and winner!=None:
-                        score += 3 if bet.winner.id==winner.id else 0
+                        score += 1 if bet.winner.id==winner.id else 0
                         LOGGER.info("\t\tResult: Winner/Looser = " + str(score))
-                    score += 1 if bet.result.first==match.result.first else 0
-                    LOGGER.info("\t\tResult: First score = " + str(score))
-                    score += 1 if bet.result.second==match.result.second else 0
-                    LOGGER.info("\t\tResult: Second score = " + str(score))
+                    score += 3 if bet.result.first==match.result.first and bet.result.second==match.result.second else 0
+                    LOGGER.info("\t\tResult: Score deduction = " + str(score))
                     if not events_ranking.has_key(event.id):
                         events_ranking[event.id] = {}
                     if not events_ranking[event.id].has_key(user.id):
@@ -178,8 +179,10 @@ def compute_event_ranking():
 def compute_group_ranking():
     today = dates.AddDay(datetime.date.today(),-1)
     for group in Group.objects.filter(event__end_date__gte=today):
+        LOGGER.info("Working on group " + str(group.name))
         ranks = []
         for user in list(group.members.all()) + list(group.owners.all()):
+            LOGGER.info("\tWorking on user " + str(user.username))
             ranking = UserRanking.objects.filter(owner__id=user.id, group__id=group.id)
             if not ranking.exists():
                 ranking = UserRanking()
@@ -197,27 +200,29 @@ def compute_group_ranking():
                 ranking.overall_score = event_rank.overall_score
                 ranking.save()
             else:
-                LOGGER.warn("User [" + user.id +"] has no rank in event:" + str(group.event.name))
+                LOGGER.warn("User [" + str(user.id) +"] has no rank in event:" + str(group.event.name))
         rank_list(ranks)
 
 def compute_overall_ranking():
-    global_scores = EventRanking.objects.values('owner').annotate(global_score = Sum('overall_score'))
+    users = User.objects.filter(is_active=True)
     ranks = []
-    for entry in global_scores:
-        ranking = UserRanking.objects.filter(owner__id=entry['owner'], group=None)
+    for user in users:
+        LOGGER.info("\tWorking on user " + str(user.username))
+        global_score = EventRanking.objects.filter(owner__id=user.id).aggregate(Sum('overall_score'))['overall_score__sum']
+        ranking = UserRanking.objects.filter(owner__id=user.id, group=None)
         if ranking.exists():
             ranking = ranking[0]
         else:
             ranking = UserRanking()
-            ranking.owner = User.objects.get(id=entry['owner'])
+            ranking.owner = user
             ranking.group = None
             ranking.overall_score = 0
             ranking.rank = None
             ranking.save()
-        ranking.overall_score = entry['global_score']
+        ranking.overall_score = global_score if global_score!=None else 0
         ranking.save()
         ranks.append(ranking)
-    rank_list(ranks)
+        rank_list(ranks)
 
 class CoreModel(models.Model):
 
