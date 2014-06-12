@@ -152,8 +152,10 @@
 					var currentId = $(this).attr("id");
 					var first = $("#first_" + currentId).val();
 					var second = $("#second_" + currentId).val();
+					var amount = $("#amount_" + currentId).val();
 					all_bets[currentId]["score"]["first"] = Number(first);
 					all_bets[currentId]["score"]["second"] = Number(second);
+					all_bets[currentId]["amount"] = Number(amount);
 				});
 				var updateForm = new FormData();
 				updateForm.append('all_bets', JSON.stringify(all_bets));
@@ -174,9 +176,10 @@
 					var disabled = all_bets[currentId]['enabled']!='true';
 					$("#first_" + currentId).val(all_bets[currentId]["score"]["first"]);
 					$("#second_" + currentId).val(all_bets[currentId]["score"]["second"]);
-					$("#first_" + currentId).prop('disabled',disabled)
-					$("#second_" + currentId).prop('disabled',disabled)
-
+					$("#amount_" + currentId).val(all_bets[currentId]["amount"]);
+					$("#first_" + currentId).prop('disabled',disabled);
+					$("#second_" + currentId).prop('disabled',disabled);
+					$("#amount_" + currentId).prop('disabled',disabled);
 				});
 				checkAllBets();
 			}

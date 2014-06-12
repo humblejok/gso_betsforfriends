@@ -55,9 +55,10 @@ def index(request):
                 score.save()
                 bet.result = score
                 bet.save()
-            all_bets[bet.match.id] = {'id': bet.id, 'score': {'first':bet.result.first, 'second':bet.result.second}, 'enabled':str(bet.match.when>=now).lower()}
+            all_bets[bet.match.id] = {'id': bet.id, 'score': {'first':bet.result.first, 'second':bet.result.second}, 'enabled':str(bet.match.when>=now).lower(), 'amount': bet.amount if bet.amount!=None else 0}
         active_events = BettableEvent.objects.filter(end_date__gte=datetime.date.today).order_by('name')
         context = {'admin_groups': admin_groups,'member_groups': member_groups, 'all_dates': all_dates, 'all_bets': all_bets, 'rankings': rankings, 'global_rank':global_ranking, 'events': active_events}
+        print context
     else:
         context = {}
     return render(request,'index.html', context)
@@ -84,6 +85,7 @@ def bets_save(request):
                     user_bet.winner = user_bet.match.first
                 else:
                     user_bet.winner = user_bet.match.second
+                user_bet.amount = web_bet[u'amount']
                 user_bet.save()
             else:
                 LOGGER.warn("Tried to bet after date")

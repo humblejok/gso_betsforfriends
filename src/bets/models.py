@@ -473,6 +473,7 @@ class Bet(CoreModel):
     match = models.ForeignKey(Match, related_name='bet_match_rel')
     winner = models.ForeignKey(Participant, related_name='bet_winner_rel', null=True)
     result = models.ForeignKey(Score, related_name='bet_score_rel')
+    amount = models.IntegerField(null=True)
 
     def get_fields(self):
         return super(Bet, self).get_fields() + ['owner','when','match','winner','result']
