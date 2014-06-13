@@ -19,6 +19,7 @@ function csrfSafeMethod(method) {
 }
 
 $.ajaxSetup({
+    cache: false,
     crossDomain: false, // Avoid cross-domain forgery
     beforeSend: function(xhr, settings) {
         if (!csrfSafeMethod(settings.type)) {

@@ -277,10 +277,11 @@ def matchs_schedule_update(request):
         new_time = request.POST['new_time']
         new_full_date = new_date + ' ' + new_time
         new_full_date = dt.strptime(new_full_date, '%Y-%m-%d %H:%M')
-        print new_full_date
         match = Match.objects.get(id=match_id)
         match.when = new_full_date
         match.save()
+        generate_events()
+        generate_matchs()
         return HttpResponse('{"result": true, "message":"No problem"}', content_type="application/json");
     else:
         redirect('/index.html')
