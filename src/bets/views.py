@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 
 from bets.models import Group, Match, Bet, Score, UserRanking, LOGGER,\
     BettableEvent, generate_matchs, compute_event_ranking, compute_group_ranking,\
-    compute_overall_ranking
+    compute_overall_ranking, generate_events
 from django.http.response import HttpResponse
 from django.contrib.auth.models import User
 import datetime
@@ -12,6 +12,7 @@ from seq_common.utils import dates
 import traceback
 from django.db.models.aggregates import Sum
 import json
+import time
 
 def index(request):
     now = datetime.datetime.today()
@@ -265,9 +266,35 @@ def matchs_save(request):
 
 def matchs_generate(request):
     if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
+        generate_events()
         generate_matchs()
     return HttpResponse('{"result": true, "message":"No problem"}', content_type="application/json");
 
+def matchs_schedule_update(request):
+    if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
+        match_id = request.POST['match_id']
+        new_date = request.POST['new_date']
+        new_time = request.POST['new_time']
+        new_full_date = new_date + ' ' + new_time
+        new_full_date = dt.strptime(new_full_date, '%Y-%m-%d %H:%M')
+        print new_full_date
+        match = Match.objects.get(id=match_id)
+        match.when = new_full_date
+        match.save()
+        return HttpResponse('{"result": true, "message":"No problem"}', content_type="application/json");
+    else:
+        redirect('/index.html')
+
+def matchs_schedule(request):
+    if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
+        begin = dt.combine(dates.AddDay(datetime.date.today(),-180), dt.min.time())
+        end = dt.combine(dates.AddDay(datetime.date.today(), 14), dt.max.time())
+        all_matchs = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when')
+        context = {'all_matchs': all_matchs}
+        return render(request,'match_schedule.html', context)
+    else:
+        redirect('/index.html')
+        
 def matchs_edit(request):
     begin = dt.combine(dates.AddDay(datetime.date.today(),-180), dt.min.time())
     end = dt.combine(dates.AddDay(datetime.date.today(), 14), dt.max.time())

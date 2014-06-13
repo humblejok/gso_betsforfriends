@@ -202,6 +202,9 @@
 
 					</div>
 					{% if request.user.is_superuser %}
+					<a href="/matchs_schedule.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Planifier les matchs">
+						<span class="glyphicon glyphicon-calendar"></span>
+					</a>
 					<a href="/matchs_edit.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Gérer les matchs">
 						<span class="glyphicon glyphicon-dashboard"></span>
 					</a>
