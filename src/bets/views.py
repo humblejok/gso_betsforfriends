@@ -180,6 +180,27 @@ def matchs_save(request):
             py_match.save()
     return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
 
+def matchs_generate(request):
+    if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
+        message = "Aucun probleme."
+        all_matchs = simplejson.loads(request.POST['all_matchs'])
+        for match in all_matchs:
+            LOGGER.info("Working on match " + str(match))
+            web_match = all_matchs[match]
+            py_match = Match.objects.get(id=match)
+            if py_match.result==None:
+                score = Score()
+            else:
+                score = Score.objects.get(id=py_match.result.id)
+            score.first = web_match[u'score'][u'first']
+            score.second = web_match[u'score'][u'second']
+            score.name = "Official score " + py_match.name
+            score.save()
+                
+            py_match.result = score
+            py_match.save()
+    return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
+
 def matchs_edit(request):
     begin = dt.combine(dates.AddDay(datetime.date.today(),-180), dt.min.time())
     end = dt.combine(dates.AddDay(datetime.date.today(), 14), dt.max.time())

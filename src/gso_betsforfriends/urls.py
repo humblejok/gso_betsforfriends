@@ -19,6 +19,7 @@ urlpatterns = patterns('',
     url(r'^matchs_edit.html$', 'bets.views.matchs_edit', name='matchs_edit'),
     url(r'^matchs_save.html$', 'bets.views.matchs_save', name='matchs_save'),
     url(r'^matchs_compute.html$', 'bets.views.matchs_compute', name='matchs_compute'),
+    url(r'^matchs_generate.html$', 'bets.views.matchs_generate', name='matchs_generate'),
     
     url(r'^bets_save.html$', 'bets.views.bets_save', name='bets_save'),
     
