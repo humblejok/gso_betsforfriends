@@ -39,31 +39,42 @@ def generate_attributes():
             o.write(rendition.encode('utf-8'))
             
 def generate_events():
-    now = dt.combine(datetime.date.today(), dt.min.time())
-    all_dates = Match.objects.filter(when__gte=now).order_by('when').dates('when','day')
+    start_date = dates.AddDay(datetime.date.today(),-14)
+    start_date_time = dt.combine(start_date, dt.min.time())
+    all_dates = Match.objects.filter(when__gte=start_date_time).order_by('when').dates('when','day')
     template = loader.get_template('rendition/events.html')
     for a_date in all_dates:
-        events = Match.objects.filter(when__gte=dt.combine(a_date, dt.min.time()), when__lte=dt.combine(a_date, dt.max.time())).order_by('when')
-        context = Context({"events": events})
-        rendition = template.render(context)
-        outfile = os.path.join(STATICS_PATH,'events', a_date.strftime('%Y-%m-%d') + '_en.html')
-        with open(outfile,'w') as o:
-            o.write(rendition.encode('utf-8'))
+        events = BettableEvent.objects.filter(end_date__gte=start_date)
+        for event in events:
+            matchs = event.matchs.filter(when__gte=dt.combine(a_date, dt.min.time()), when__lte=dt.combine(a_date, dt.max.time())).order_by('when')
+            context = Context({"events": matchs})
+            rendition = template.render(context)
+            try:
+                os.makedirs(os.path.join(STATICS_PATH,'events', str(event.id)))
+            except:
+                None # Folder already exists
+            outfile = os.path.join(STATICS_PATH,'events', str(event.id), a_date.strftime('%Y-%m-%d') + '_en.html')
+            with open(outfile,'w') as o:
+                o.write(rendition.encode('utf-8'))
             
 def generate_matchs(match_ids=None):
-    now = dt.combine(datetime.date.today(), dt.min.time())
-    if match_ids!=None:
-        all_dates = Match.objects.filter(id__in=match_ids).order_by('when').dates('when','day')
-    else:
-        all_dates = Match.objects.filter(when__gte=now).order_by('when').dates('when','day')
+    start_date = dates.AddDay(datetime.date.today(),-14)
+    start_date_time = dt.combine(start_date, dt.min.time())
+    all_dates = Match.objects.filter(when__gte=start_date_time).order_by('when').dates('when','day')
     template = loader.get_template('rendition/matchs.html')
     for a_date in all_dates:
-        events = Match.objects.filter(when__gte=dt.combine(a_date, dt.min.time()), when__lte=dt.combine(a_date, dt.max.time())).order_by('when')
-        context = Context({"events": events})
-        rendition = template.render(context)
-        outfile = os.path.join(STATICS_PATH,'matchs', a_date.strftime('%Y-%m-%d') + '_en.html')
-        with open(outfile,'w') as o:
-            o.write(rendition.encode('utf-8'))
+        events = BettableEvent.objects.filter(end_date__gte=start_date)
+        for event in events:
+            matchs = event.matchs.filter(when__gte=dt.combine(a_date, dt.min.time()), when__lte=dt.combine(a_date, dt.max.time())).order_by('when')
+            context = Context({"events": matchs})
+            rendition = template.render(context)
+            try:
+                os.makedirs(os.path.join(STATICS_PATH,'matchs', str(event.id)))
+            except:
+                None # Folder already exists
+            outfile = os.path.join(STATICS_PATH,'matchs', str(event.id), a_date.strftime('%Y-%m-%d') + '_en.html')
+            with open(outfile,'w') as o:
+                o.write(rendition.encode('utf-8'))
 
 def populate_attributes_from_xlsx(model_name, xlsx_file):
     model = classes.my_class_import(model_name)
@@ -147,20 +158,11 @@ def compute_event_ranking():
                 score = 0
                 LOGGER.info("\t\tWorking on match " + str(match.name))
                 bet = Bet.objects.filter(match__id=match.id, owner__id=user.id)
-                winner = None
-                if match.result.first!=match.result.second:
-                    winner = match.first if match.result.first>match.result.second else match.second
+                winner = match.get_winner()
                 LOGGER.info("\t\tWinner is " + str(winner))
                 if bet.exists():
                     bet = bet[0]
-                    if bet.winner==None and winner==None:
-                        score += 1
-                        LOGGER.info("\t\tResult: Even found = " + str(score))
-                    elif bet.winner!=None and winner!=None:
-                        score += 1 if bet.winner.id==winner.id else 0
-                        LOGGER.info("\t\tResult: Winner/Looser = " + str(score))
-                    score += 3 if bet.result.first==match.result.first and bet.result.second==match.result.second else 0
-                    LOGGER.info("\t\tResult: Score deduction = " + str(score))
+                    score = bet.get_score()
                     if not events_ranking.has_key(event.id):
                         events_ranking[event.id] = {}
                     if not events_ranking[event.id].has_key(user.id):
@@ -456,6 +458,19 @@ class Match(CoreModel):
     second = models.ForeignKey(Participant, related_name='match_second_part_rel')
     result = models.ForeignKey(Score, related_name='match_score_rel', null=True)
     
+    def display_score(self):
+        if self.result:
+            display_score = str(self.result.first) + " - " + str(self.result.second)
+            return display_score
+        return "Aucun" 
+    
+    def get_winner(self):
+        winner = None
+        
+        if self.result!=None and self.result.first!=self.result.second:
+            winner = self.first if self.result.first>self.result.second else self.second
+        return winner
+    
     def get_fields(self):
         return super(Match, self).get_fields() + ['name','type','when','first','second','result']
     
@@ -479,6 +494,20 @@ class Bet(CoreModel):
     winner = models.ForeignKey(Participant, related_name='bet_winner_rel', null=True)
     result = models.ForeignKey(Score, related_name='bet_score_rel')
     amount = models.IntegerField(null=True)
+
+    def get_score(self):
+        score = 0
+        winner = self.match.get_winner()
+        if self.match.result!=None and self.result!=None:
+            if self.winner==None and winner==None:
+                score += 1
+                LOGGER.info("\t\tResult: Even found = " + str(score))
+            elif self.winner!=None and winner!=None:
+                score += 1 if self.winner.id==winner.id else 0
+                LOGGER.info("\t\tResult: Winner/Looser = " + str(score))
+            score += 3 if self.result.first==self.match.result.first and self.result.second==self.match.result.second else 0
+        LOGGER.info("\t\tResult: Score deduction = " + str(score))
+        return score
 
     def get_fields(self):
         return super(Bet, self).get_fields() + ['owner','when','match','winner','result']

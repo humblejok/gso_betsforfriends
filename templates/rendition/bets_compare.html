@@ -1,0 +1,10 @@
+{% load bets_tags %}
+<tr><th>&nbsp;</th>{% for member in all_members %}<th class="rotate-45"><div><span>{{member.first_name}}</span></div></th>{% endfor %}</tr>
+{% for bet in bets %}
+<tr>
+	<td class="row-header">{{bet}}</td>
+	{% for member in all_members %}
+	<td>{{bets|get_dict_key:bet|get_dict_key:member.id|get_dict_key:'first'}} - {{bets|get_dict_key:bet|get_dict_key:member.id|get_dict_key:'second'}}</td>
+	{% endfor %}
+</tr>
+{% endfor %}

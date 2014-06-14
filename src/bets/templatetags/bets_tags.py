@@ -15,6 +15,10 @@ def get_match_name(match_name):
 def get_dict_key(d, key):
     if d.has_key(key):
         return d[key]
+    elif d.has_key(str(key)):
+        return d[str(key)]
+    elif d.has_key(unicode(key)):
+        return d[unicode(key)]
     else:
         return None
 

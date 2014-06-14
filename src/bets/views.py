@@ -4,7 +4,8 @@ from django.shortcuts import render, redirect
 from bets.models import Group, Match, Bet, Score, UserRanking, LOGGER,\
     BettableEvent, generate_matchs, compute_event_ranking, compute_group_ranking,\
     compute_overall_ranking, generate_events
-from django.http.response import HttpResponse
+from django.http.response import HttpResponse, HttpResponseForbidden,\
+    HttpResponseBadRequest
 from django.contrib.auth.models import User
 import datetime
 from datetime import datetime as dt
@@ -12,7 +13,7 @@ from seq_common.utils import dates
 import traceback
 from django.db.models.aggregates import Sum
 import json
-import time
+from django.core.exceptions import PermissionDenied
 
 def index(request):
     now = datetime.datetime.today()
@@ -40,7 +41,6 @@ def index(request):
 
         admin_groups = Group.objects.filter(Q(owners__id__exact=request.user.id)).distinct().order_by('name')
         member_groups = Group.objects.filter(Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id)).distinct().order_by('name')
-
         all_matches = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when')
         all_bets = {}
         for match in all_matches:
@@ -61,9 +61,9 @@ def index(request):
                 score.save()
                 bet.result = score
                 bet.save()
-            all_bets[bet.match.id] = {'id': bet.id, 'score': {'first':bet.result.first, 'second':bet.result.second}, 'enabled':str(bet.match.when + datetime.timedelta(minutes=20)>=now).lower(), 'amount': bet.amount if bet.amount!=None else 0}
+            all_bets[bet.match.id] = {'id': bet.id, 'score': {'first':bet.result.first, 'second':bet.result.second}, 'enabled':str(bet.match.when + datetime.timedelta(minutes=10)>=now).lower(), 'amount': bet.amount if bet.amount!=None else 0}
         allow_amount = request.user.groups.filter(name='allow_amount')
-        context = {'admin_groups': admin_groups,'member_groups': member_groups, 'all_dates': all_dates, 'all_bets': all_bets, 'rankings': rankings, 'global_rank':global_ranking, 'events': active_events, 'allow_amount': allow_amount}
+        context = {'admin_groups': admin_groups,'member_groups': member_groups, 'all_dates': all_dates, 'all_bets': all_bets, 'rankings': rankings, 'global_rank':global_ranking, 'events': active_events, 'allow_amount': allow_amount, 'events': active_events}
     else:
         context = {'all_dates': all_dates, 'events': active_events, 'all_bets': []}
     return render(request,'index.html', context)
@@ -78,7 +78,7 @@ def bets_save(request):
             web_bet = all_bets[bet]
             bet_id = web_bet[u'id']
             user_bet = Bet.objects.get(id=bet_id, owner__id=user.id)
-            if user_bet.match.when+ datetime.timedelta(minutes=20)>=now:
+            if user_bet.match.when+ datetime.timedelta(minutes=10)>=now:
                 score = Score.objects.get(id=user_bet.result.id)
                 user_bet.when = now
                 score.first = web_bet[u'score'][u'first']
@@ -132,12 +132,50 @@ def group_edit(request):
                 context = {'group': group, 'ranking':ranking, 'yours': your_rank, 'betted_amounts':betted_amounts, 'allow_amount':allow_amount,'locked_amounts':locked_amounts}
                 return render(request,'group_edit.html', context)
             else:
-                redirect('/index.html')
+                raise PermissionDenied()
         except:
             traceback.print_exc()
-            redirect('/index.html')
+            return HttpResponseBadRequest()
     else:
-        redirect('/index.html')
+        raise PermissionDenied()
+
+def group_details(request):
+    if request.user.is_authenticated and request.user.id!=None:
+        group_id = request.GET['group_id']
+        user = User.objects.get(id=request.user.id)
+        group = Group.objects.get(id=group_id)
+        if group.members.filter(id=user.id).exists() or group.owners.filter(id=user.id).exists():
+            allow_amount = request.user.groups.filter(name='allow_amount')
+            all_users_ids = list(group.members.values_list('id', flat=True)) + list(group.owners.values_list('id', flat=True))
+            all_users = User.objects.filter(id__in=all_users_ids).order_by('id')
+            all_matchs = group.event.matchs.all().order_by('when')
+            all_bets = {}
+            for match in all_matchs:
+                bets = Bet.objects.filter(match__id=match.id, owner__in=all_users_ids).order_by('owner__id')
+                all_bets[match.name] = bets
+            context = {'all_bets':all_bets, 'all_users': all_users, 'all_matchs': all_matchs, 'today': datetime.date.today().strftime('%Y-%m-%d'), 'allow_amount': allow_amount}
+            return render(request,'group_details.html', context) 
+    raise PermissionDenied()
+            
+
+def group_compare(request):
+    if request.user.is_authenticated and request.user.id!=None:
+        group_id = request.GET['group_id']
+        bet_date_start = datetime.datetime.strptime(request.GET['date'],'%Y-%m-%d').replace(hour=0, minute=0, second=0)
+        bet_date_end = datetime.datetime.strptime(request.GET['date'],'%Y-%m-%d').replace(hour=23, minute=59, second=59)
+        
+        group = Group.objects.get(id=group_id)
+        all_members = list(group.members.all()) + list(group.owners.all())
+        bets = {}
+        all_matchs = group.event.matchs.filter(when__gte=bet_date_start, when__lte=bet_date_end)
+        for match in all_matchs:
+            bets[match.name] = {}
+            for member in all_members:
+                bet = Bet.objects.get(match__id=match.id, owner__id=member.id)
+                bets[match.name][str(member.id)] = {'first':bet.result.first, 'second':bet.result.second, 'amount':bet.amount}
+        return render(request,'rendition/bets_compare.html', {'bets':bets,'all_members': all_members})
+    else:
+        raise PermissionDenied()
     
 def group_view(request):
     if request.user.is_authenticated and request.user.id!=None:
@@ -174,12 +212,12 @@ def group_view(request):
                 context = {'group': group, 'ranking':ranking, 'yours': your_rank, 'betted_amounts':betted_amounts, 'allow_amount':allow_amount,'locked_amounts':locked_amounts}
                 return render(request,'group_view.html', context)
             else:
-                redirect('/index.html')
+                raise PermissionDenied()
         except:
             traceback.print_exc()
-            redirect('/index.html')
+            return HttpResponseBadRequest()
     else:
-        redirect('/index.html')
+        raise PermissionDenied()
 
 def group_remove_user(request):
     if request.user.is_authenticated and request.user.id!=None:
@@ -194,18 +232,17 @@ def group_remove_user(request):
                 group.save()
                 return HttpResponse('{"result": true, "message":"User removed!"}', content_type="application/json");
             else:
-                redirect('/index.html')
+                raise PermissionDenied()
         except:
             traceback.print_exc()
-            redirect('/index.html')
+            return HttpResponseBadRequest()
     else:
-        redirect('/index.html')
+        raise PermissionDenied()
 
 def group_join(request):
     group_name = request.POST['group_name']
     user = User.objects.get(id=request.user.id)
     if Group.objects.filter(name=group_name).exists():
-        print "Group found"
         if Group.objects.filter(Q(name=group_name), Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id)).exists():
             return HttpResponse('{"result": true, "message":"Group already joined!"}', content_type="application/json");
         else:
@@ -214,7 +251,6 @@ def group_join(request):
             joined_group.save()
         return HttpResponse('{"result": true, "message":"Group joined!"}', content_type="application/json");
     else:
-        print "Group not found"
         return HttpResponse('{"result": false, "message":"Group doesn''t exist!"}', content_type="application/json");
 
 def group_create(request):
@@ -240,7 +276,7 @@ def matchs_compute(request):
         compute_overall_ranking()
         return HttpResponse('{"result": true, "message":"No problem occured."}', content_type="application/json");
     else:
-        redirect('/index.html')
+        raise PermissionDenied()
         
 def matchs_save(request):
     if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
@@ -262,13 +298,17 @@ def matchs_save(request):
             py_match.result = score
             py_match.save()
         generate_matchs(all_matchs.keys())
-    return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
+        return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
+    else:
+        raise PermissionDenied()
 
 def matchs_generate(request):
     if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
         generate_events()
         generate_matchs()
-    return HttpResponse('{"result": true, "message":"No problem"}', content_type="application/json");
+        return HttpResponse('{"result": true, "message":"No problem"}', content_type="application/json");
+    else:
+        raise PermissionDenied()
 
 def matchs_schedule_update(request):
     if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
@@ -284,22 +324,32 @@ def matchs_schedule_update(request):
         generate_matchs()
         return HttpResponse('{"result": true, "message":"No problem"}', content_type="application/json");
     else:
-        redirect('/index.html')
+        raise PermissionDenied()
 
 def matchs_schedule(request):
     if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
-        begin = dt.combine(dates.AddDay(datetime.date.today(),-180), dt.min.time())
-        end = dt.combine(dates.AddDay(datetime.date.today(), 14), dt.max.time())
+        begin = dt.combine(dates.AddDay(datetime.date.today(),-31), dt.min.time())
+        end = dt.combine(dates.AddDay(datetime.date.today(), 31), dt.max.time())
         all_matchs = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when')
         context = {'all_matchs': all_matchs}
         return render(request,'match_schedule.html', context)
     else:
-        redirect('/index.html')
+        raise PermissionDenied()
         
 def matchs_edit(request):
-    begin = dt.combine(dates.AddDay(datetime.date.today(),-180), dt.min.time())
+    begin = dt.combine(dates.AddDay(datetime.date.today(),-31), dt.min.time())
     end = dt.combine(dates.AddDay(datetime.date.today(), 14), dt.max.time())
+    active_events = BettableEvent.objects.filter(end_date__gte=begin).order_by('name')
     all_dates = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when').dates('when','day')
     all_dates = [a_date.strftime('%Y-%m-%d') for a_date in all_dates]
-    context = {'all_dates': all_dates}
+    context = {'all_dates': all_dates, 'events': active_events}
     return render(request,'match_edit.html', context)
+
+def profile_show(request):
+    return render(request,'profile_show.html', {})
+
+def badrequest(request):
+    return render(request,'errors/400.html', {})
+
+def forbidden(request):
+    return render(request,'errors/403.html', {})

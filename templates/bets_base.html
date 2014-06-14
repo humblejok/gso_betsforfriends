@@ -1,0 +1,164 @@
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>{% block title %}Paris entre amis{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="/static/jquery.timepicker.css" rel="stylesheet" type="text/css"/>
+    <link href="/static/css/gammasimos.css" rel="stylesheet" type="text/css"/>
+    <link href="/static/themes/redmond/jquery-ui.min.css" rel="stylesheet" type="text/css"/>
+    <script src="/static/jquery-2.1.0.min.js" type="text/javascript"></script>
+    <script src="/static/jquery-ui.js" type="text/javascript"></script>
+    <script src="/static/jquery.timepicker.js" type="text/javascript"></script>
+    <script src="/static/bootstrap/js/bootstrap.min.js"></script>
+    <script src="/static/gammasimos.js"></script>
+    <script src="/static/date.js" type="text/javascript"></script>
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-45995833-2', 'unpari.fr');
+      ga('send', 'pageview');
+
+    </script>
+    <script>
+      $(document).ready(function () {
+        $(".btn").tooltip();
+        $(".no-enter").keydown( function(e) {
+          if (e.keyCode == 13) {
+            e.preventDefault();
+          }
+        });
+        $(".date-field").datepicker({ dateFormat: "yy-mm-dd" });
+        $(".time-field").timepicker({ timeFormat: "H:i"});
+        applyNumericOnly();
+        csrftoken = getCookie("csrftoken");
+        {% block readyoptions %}
+        {% endblock %}
+      });
+    </script>
+    {% block headeroptions %}
+    {% endblock %}
+    <script>
+
+      function applyNumericOnly() {
+        $(".num-only").keydown( function(e) {
+          if (e.keyCode==13) {
+            e.preventDefault();
+          } else {
+            if ($.inArray(e.keyCode, [46, 8, 9, 27, 13]) !== -1 || (e.keyCode == 65 && e.ctrlKey === true) || (e.keyCode >= 35 && e.keyCode <= 39)) {
+              return;
+            }
+            if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+              e.preventDefault();
+            }
+          }
+        });
+      }
+
+      function backgroundFailed(e) {
+        $("#backgroundProgress").addClass("invisible");
+        $(".btn").removeClass("disabled");
+        alert("An error occured while saving [" + e.message + "].");
+      }
+
+      function backgroundSuccess(e) {
+        if (e.result) {
+          $("#backgroundProgress").addClass("invisible");
+          $(".btn").removeClass("disabled");
+        } else {
+          backgroundFailed(e);
+        }
+      }
+
+      function launchBackground(targetURL) {
+        $("#backgroundProgress").removeClass("invisible");
+        $(".btn").addClass("disabled");
+        var backgroundForm = new FormData();
+        $.ajax({
+          url: targetURL,
+          type: 'GET',
+          data: backgroundForm,
+          processData: false,
+          contentType: false,
+          success: backgroundSuccess,
+          error: backgroundFailed
+        });
+      }
+    </script>
+
+  </head>
+  <body>
+  {% block bodyoption %}
+  {% endblock %}
+    <div class="container" style="padding: 0 15px;">
+      {% if request.user.is_authenticated %}
+        <div class="row">
+          <div class="col-lg-10">
+            {% block pageheader %}
+            {% endblock %}
+          </div>
+          {% if request.user.is_superuser %}
+            <a href="/matchs_schedule.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Planifier les matchs">
+              <span class="glyphicon glyphicon-calendar"></span>
+            </a>
+            <a href="/matchs_edit.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Gérer les résultats des matchs">
+              <span class="glyphicon glyphicon-list-alt"></span>
+            </a>
+            <button onclick="launchBackground('/matchs_compute.html')" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Lancer le calcul des scores">
+              <span class="glyphicon glyphicon-refresh"></span>
+            </button>
+            <button onclick="launchBackground('/matchs_generate.html')" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Lancer la génération des templates">
+              <span class="glyphicon glyphicon-save"></span>
+            </button>
+            <a href="/profile_show.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Voir mon profil et mes préférences">
+              <span class="glyphicon glyphicon-user"></span>
+            </a>
+          {% endif %}
+            <a href="/index.html" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Retour à l'index">
+              <span class="glyphicon glyphicon-home"></span>
+            </a>
+            <a href="/accounts/logout" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Quitter">
+              <span class="glyphicon glyphicon-off"></span>
+            </a>
+          </div>
+          <div id="backgroundProgress" class="progress progress-striped active invisible">
+            <div class="progress-bar progress-bar-danger"  role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">Tâche en cours d'exécution, veuillez patienter!</div>
+          </div>
+
+        {% block content %}
+        {% endblock%}
+      {% else %}
+        <div class="row">
+          <div class="col-lg-11">
+            <h1 class="">Bienvenue sur unpari.fr</h1>
+              <p class="lead">Ici, vous ne risquez pas de vous faire dépouiller car il n'est aucunement possible de miser une somme d'argent. Ce site sert simplement à garder une trace de vos pronostics et de comparer vos résultats avec tous les membres du site ou simplement un groupe d'amis/collègues.
+            </div>
+        </div>
+          <div class="row">
+            Pas d'inscription, il suffit simplement de posséder un compte Facebook et de vous identifier en utilisant ce même compte. Aucun email indésirable ne sera envoyé à vos contacts.
+        </div>
+        <div class="row">&nbsp;</div>
+        <div class="row text-center">
+            <a href="/accounts/login" class="btn btn-primary btn-lg" role="button">Entrer</a>
+          </div>
+          <div class="row">&nbsp;</div>
+          <div class="row">&nbsp;</div>
+          <div class="row text-center">Ci-dessous, vous trouverez les événements sur lesquels vous pouvez actuellement parier.</div>
+          <div class="row">&nbsp;</div>
+          <div class="row">
+            <table class="table">
+              <tr><th>Evénement</th><th>Sport</th><th>Du</th><th>au</th></tr>
+            {% for event in events %}
+              <tr><td>{{event.name}}</td><td>{{event.sport.name}}</td><td>{{event.start_date|date:'M d, Y'}}</td><td>{{event.end_date|date:'M d, Y'}}</td></tr>
+            {% endfor %}
+            </table>
+          </div>
+          <div style="height: 40px;">&nbsp;</div>
+          <div class="row h6">Ce site utilise des icônes en provenance de <a href="http://glyphicons.com/">GlyphIcons</a>.<br/>Les drapeu <a href="http://glyphicons.com/">GlyphIcons</a>.</div>
+      {% endif %}
+    </div>
+  </body>

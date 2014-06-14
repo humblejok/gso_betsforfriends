@@ -11,10 +11,10 @@
 		<td>&nbsp;</td>
 	</tr>
 	<tr id="{{event.id}}" class="score">
-		<td id="label_first_{{event.id}}" class="col-lg-2 text-center">{{event.first}}</td>
+		<td id="label_first_{{event.id}}" class="col-lg-2 text-center"><div style="margin-top: 12px;><span"><strong>{{event.first}}</strong></span><img style="float:right; margin-top: -12px;" src="/static/flags/{{event.first}}.png"/></div></td>
 		<td class="col-lg-1 text-center"><input id="first_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllMatchs()" value="{% if event.result.first %}{{event.result.first}}{% else %}0{% endif %}"></input></td>
 		<td class="col-lg-1 text-center"><input id="second_{{event.id}}" type="text" class="form-control text-center num-only col-lg-1" onchange="checkAllMatchs()" value="{% if event.result.second %}{{event.result.second}}{% else %}0{% endif %}"></input></td>
-		<td id="label_second_{{event.id}}" class="col-lg-2 text-center">{{event.second}}</td>
+		<td id="label_second_{{event.id}}" class="col-lg-2 text-center"><div style="margin-top: 12px;><span"><strong>{{event.second}}</strong></span><img style="float:left; margin-top: -12px;" src="/static/flags/{{event.second}}.png"/></td>
 		<td class="col-lg-1 text-center"><button type="button" class="btn btn-info btn-lg" onclick="saveOneMatch({{event.id}})">Sauvegarder</button></td>
 	</tr>
 	{% endfor %}

@@ -1,0 +1,65 @@
+{% extends "bets_base.html" %}
+{% load bets_tags %}
+{% block title %}Mon profil{% endblock %}
+{% block readyoptions %}
+	setTimeout(getFacebookProfile,1000);
+{% endblock %}
+{% block headeroptions %}
+<script>
+	var myFacebookId;
+	function getFacebookProfile() {
+		FB.api( "/me",
+				function (response) {
+					if (response && !response.error) {
+						myFacebookId = response.id;
+						$("#profilePicture").attr("src","https://graph.facebook.com/" + response.id + "/picture");
+					}
+				}
+		);
+	}
+
+	function getFriendsList() {
+		FB.api( "/me/friends",
+		function (response) {
+			if (response && !response.error) {
+				alert(response.data);
+			}
+		}
+		);
+		
+	}
+</script>
+{% endblock %}
+{% block bodyoption %}
+<div id="fb-root">
+	<script>
+		window.fbAsyncInit = function() {
+			FB.init({ appId      : '649597171790214',
+					xfbml      : true,
+					status     : true,
+					version    : 'v2.0'
+					});
+		};
+
+		(function(d, s, id){
+		var js, fjs = d.getElementsByTagName(s)[0];
+		if (d.getElementById(id)) {return;}
+		js = d.createElement(s); js.id = id;
+		js.src = "//connect.facebook.net/en_US/sdk.js";
+		fjs.parentNode.insertBefore(js, fjs);
+		}(document, 'script', 'facebook-jssdk'));
+	</script>
+</div>
+{% endblock %}
+{% block pageheader %}
+						<h1 class=""><img id="profilePicture" style="float: left;" style="width: 50px; height: 50px;"/>{{user.first_name}} {{user.last_name}}</h1>
+						<p class="lead">Visualisez et changez les paramètres de votre profile sur cette page.<br/>
+{% endblock %}
+{% block content %}
+				<div class="row">
+					<button class="btn btn-default" role="button" onclick="getFriendsList()">Test</button>
+				</div>
+				<div class="row">&nbsp;</div>
+				<div id="testZone" class="row">
+				</div>
+{% endblock %}
