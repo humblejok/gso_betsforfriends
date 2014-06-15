@@ -16,6 +16,8 @@ import traceback
 from django.template.context import Context
 from gso_betsforfriends.settings import RESOURCES_MAIN_PATH, STATICS_PATH
 from django.db.models.aggregates import Sum
+from seq_common.network import soap
+from suds.client import Client
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +27,16 @@ def setup():
     populate_model_from_xlsx('bets.models.Participant', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('bets.models.Match', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
     populate_model_from_xlsx('bets.models.BettableEvent', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+
+def setup_attributes_only():
+    populate_attributes_from_xlsx('bets.models.Attributes', os.path.join(RESOURCES_MAIN_PATH,'Repository Setup.xlsx'))
+    generate_attributes()
+
+def populate_model(model_name, file_name):
+    populate_model_from_xlsx(model_name, os.path.join(RESOURCES_MAIN_PATH, file_name))
+
+def update_model(model_name, file_name, keys, fields):
+    update_model_from_xlsx(model_name, os.path.join(RESOURCES_MAIN_PATH, file_name), keys, fields)
 
 def generate_attributes():
     all_types = Attributes.objects.all().order_by('type').distinct('type')
@@ -105,6 +117,48 @@ def populate_attributes_from_xlsx(model_name, xlsx_file):
             instance.save()
         row_index += 1
 
+def update_model_from_xlsx(model_name, xlsx_file, keys, fields):
+    LOGGER.info("Loading data in " + model_name)
+    model = classes.my_class_import(model_name)
+    workbook = load_workbook(xlsx_file)
+    sheet = workbook.get_sheet_by_name(name=model.__name__)
+    row_index = 1
+    # Reading header
+    header = []
+    for column_index in range(1, sheet.get_highest_column() + 1):
+        value = sheet.cell(row = row_index, column=column_index).value
+        if value!=None:
+            header.append(value if value!='' else header[-1])
+        else:
+            break
+    LOGGER.info('Using header:' + str(header))
+    row_index += 1
+    while row_index<=sheet.get_highest_row():
+        filtering_by = {}
+        for key in keys:
+            if model._meta.get_field(key).get_internal_type()=='ForeignKey':
+                filtering_by[key + '__name'] = sheet.cell(row = row_index, column = header.index(key, ) + 1).value
+            else:
+                filtering_by[key] = sheet.cell(row = row_index, column = header.index(key, ) + 1).value
+        by_identifier = model.objects.filter(**filtering_by)
+        if by_identifier.exists():
+            instance = by_identifier[0]
+            for i in range(0,len(header)):
+                if header[i] in fields:
+                    value = sheet.cell(row = row_index, column = i + 1).value
+                    field_info = Attributes()
+                    field_info.short_name = header[i]
+                    field_info.name = header[i]
+                    instance.set_attribute('excel', field_info, value)
+            instance.finalize()
+            if instance.name==None:
+                break
+            else:
+                instance.save()
+        else:
+            LOGGER.error("Could not find model with " + str(by_identifier))
+        row_index += 1
+
 def populate_model_from_xlsx(model_name, xlsx_file):
     LOGGER.info("Loading data in " + model_name)
     model = classes.my_class_import(model_name)
@@ -150,16 +204,16 @@ def compute_event_ranking():
     events = BettableEvent.objects.filter(end_date__gte=today)
     events_ranking = {}
     for event in events:
-        LOGGER.info("Working on event " + str(event.name))
+        LOGGER.info("Working on event " + unicode(event.name))
         EventRanking.objects.filter(event__id=event.id).delete()
         for user in users:
-            LOGGER.info("\tWorking on user " + str(user.username))
+            LOGGER.info("\tWorking on user " + unicode(user.username))
             for match in event.matchs.filter(result__isnull=False):
                 score = 0
-                LOGGER.info("\t\tWorking on match " + str(match.name))
+                LOGGER.info("\t\tWorking on match " + unicode(match.name))
                 bet = Bet.objects.filter(match__id=match.id, owner__id=user.id)
                 winner = match.get_winner()
-                LOGGER.info("\t\tWinner is " + str(winner))
+                LOGGER.info("\t\tWinner is " + unicode(winner))
                 if bet.exists():
                     bet = bet[0]
                     score = bet.get_score()
@@ -522,4 +576,93 @@ class BettableEvent(CoreModel):
     
     def get_fields(self):
         return super(BettableEvent, self).get_fields() + ['name','sport','start_date','end_date','participants','matchs']
+
+class Provider(CoreModel):
+    name = models.CharField(max_length=256)
+    event = models.ForeignKey('BettableEvent', related_name='provider_event_rel')
+    source = models.ForeignKey(Attributes, limit_choices_to={'type':'provider_source'}, related_name='provider_source_rel')
+    ws_url = models.CharField(max_length=1024, null=True)
+    ws_all_method = models.CharField(max_length=1024, null=True)
+    ws_all_arguments = models.CharField(max_length=1024, null=True)
+    ws_unique_method = models.CharField(max_length=1024, null=True)
+    ws_unique_arguments = models.CharField(max_length=1024, null=True)
     
+    def get_fields(self):
+        return super(Provider, self).get_fields() + ['name','event', 'source','ws_url','ws_all_method','ws_all_arguments','ws_unique_method','ws_unique_arguments']
+    
+    def initialize_tables(self):
+        for match in self.event.matchs.all():
+            LOGGER.info("Working on " + match.name)
+            mapping = ProviderMapping.objects.filter(local__id=match.id, provider__id=self.id)
+            if mapping.exists():
+                LOGGER.info("\tAlready mapped, skipping!")
+            else:
+                mapping = ProviderMapping()
+                mapping.local = match
+                mapping.name = match.name
+                mapping.local_model = 'Match'
+                mapping.provider = self
+                mapping.save()
+        for participant in self.event.participants.all():
+            LOGGER.info("Working on " + participant.name)
+            mapping = ProviderMapping.objects.filter(local__id=participant.id, provider__id=self.id)
+            if mapping.exists():
+                LOGGER.info("\tAlready mapped, skipping!")
+            else:
+                mapping = ProviderMapping()
+                mapping.local = participant
+                mapping.local_model = 'Participant'
+                mapping.name = participant.name
+                mapping.provider = self
+                mapping.save()
+                
+    def get_all_matches_info(self):
+        if self.name=='footballpool.dataaccess.eu':
+            client = Client(self.ws_url)
+            all_info = getattr(client.service,self.ws_all_method)()
+            for info in all_info.tGameInfo:
+                valid_score = info.sResult!='U'
+                if valid_score:
+                    match_id = info.iId
+                    first_id = info.Team1.iId
+                    second_id = info.Team2.iId
+                    score = info.sScore
+                    match = Match.objects.get(id=ProviderMapping.objects.get(target_id=match_id, local_model='Match', provider__id=self.id).local.id)
+                    first = Participant.objects.get(id=ProviderMapping.objects.get(target_id=first_id, local_model='Participant', provider__id=self.id).local.id)
+                    second = Participant.objects.get(id=ProviderMapping.objects.get(target_id=second_id, local_model='Participant', provider__id=self.id).local.id)
+                    score_info = score.split('-')
+                    if match.first != first:
+                        first = int(score_info[1])
+                        second = int(score_info[0])
+                    else:
+                        first = int(score_info[0])
+                        second = int(score_info[1])
+                    LOGGER.info(match.name)
+                    LOGGER.info(score + " => " + str(first) + "-" + str(second))
+                    if match.result!=None:
+                        result = Score.objects.get(id=match.result.id)
+                    else:
+                        result = Score()
+                        result.name = match.name
+                        result.save()
+                        match.result = result
+                        match.save()
+                    result.first = first
+                    result.second = second
+                    result.save()
+            generate_matchs()
+            compute_event_ranking()
+            compute_group_ranking()
+            compute_overall_ranking()
+                    
+    
+class ProviderMapping(CoreModel):
+    local = models.ForeignKey(CoreModel, related_name='provider_local_rel')
+    name = models.CharField(max_length=1024, null=True)
+    local_model = models.CharField(max_length=1024, null=True)
+    provider = models.ForeignKey(Provider, related_name='provider_rel')
+    target_name = models.CharField(max_length=1024, null=True)
+    target_id = models.IntegerField(null=True)
+    
+    def get_fields(self):
+        return super(ProviderMapping, self).get_fields() + ['local', 'name', 'local_model', 'provider', 'target_name', 'target_id']
