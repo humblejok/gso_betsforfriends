@@ -4,8 +4,20 @@
 {% block readyoptions %}{% endblock %}
 {% block headeroptions %}
 		<script>
+			function setupNotSaved(e) {
+				alert("An error occured while saving setup [" + e.message + "].");
+			}
+
+			function setupSaved(e) {
+				if (e.result) {
+					
+				} else {
+					userNotRemoved(e);
+				}
+			}
+
 			function userNotRemoved(e) {
-				alert("An error occured while saving [" + e.message + "].");
+				alert("An error occured while saving users [" + e.message + "].");
 			}
 
 			function userRemoved(e) {
@@ -30,6 +42,48 @@
 					error: userNotRemoved
 				});
 			}
+
+			function saveWinnerSetup() {
+				var all_data = [];
+				var setupForm = new FormData();
+				$('.setup-row').each(function(index) {
+					var data = {'step': $('#stepValue_' + index).val(),
+								'points':Number($('#pointsValue_' + index).val()),
+								'quote':$('#quoteValue_' + index).prop('checked'),
+								};
+					all_data.push(data);
+				}
+				);
+				var setupForm = new FormData();
+				setupForm.append('group_id', {{group.id}});
+				setupForm.append('data', JSON.stringify(all_data));
+				$.ajax({
+					url: '/bets_winner_save.html',
+					type: 'POST',
+					data: setupForm,
+					processData: false,
+					contentType: false,
+					success: setupSaved,
+					error: setupNotSaved
+				});
+			}
+
+			function matchTypesLoaded() {
+				saveWinnerSetup();
+			}
+			function removeSetup(rowIndex) {
+				$('#setupTable tr:eq(' + (rowIndex+1) + ')').remove();
+				saveWinnerSetup();
+			}
+
+			function addSetup() {
+				var rowCount = $('#setupTable tr').length - 1;
+				var newRow = "<tr class='setup-row'><td id='stepColumn_" + rowCount + "'><select id='stepValue_" + rowCount + "' class='form-control' onchange='saveWinnerSetup()'></select></td><td id='scoreColumn_" + rowCount + "'><div><input id='pointsValue_" + rowCount + "' class='form-control text-center num-only' value='3' onchange='saveWinnerSetup()'/></div></td><td id='quoteColumn_" + rowCount + "' class='text-center'><input id='quoteValue_" + rowCount + "' type='checkbox' class='formControl' value='quote' onchange='saveWinnerSetup()'/></td></tr>";
+				$('#setupTable').append(newRow);
+				applyNumericOnly();
+				$("#stepValue_" + rowCount).load("/static/match_type_en.html",matchTypesLoaded);
+				
+			}
 		</script>
 {% endblock %}
 {% block pageheader %}
@@ -38,6 +92,10 @@
 			  			{% if yours.rank %}Dans ce groupe, vous êtes au rang <span class="label label-info">{{yours.rank}}</span> avec un score de <span class="label label-info">{{yours.overall_score}}</span>.{% else %}Vous n'avez pas encore de classement dans ce groupe.{% endif %}
 {% endblock %}
 {% block content %}
+				<div class="row h4">
+					Vous pouvez inviter des personnes dans ce groupe en cliquant <a href="mailto:?Subject=Venez me rejoindre sur unpari.fr&body=Bonjour,%0D%0AVenez me rejoindre sur http://unpari.fr.%0D%0AIl suffit de rentrer dans le site en utilisant son compte Facebook puis de cliquer sur le bouton 'Rejoindre un groupe'.%0D%0AIl vous faut alors de saisir le nom suivant en respectant la casse:{{group.name}}.%0D%0A%0D%0AMerci,%0D%0A{{user.last_name}} {{user.first_name}}" target="_top">sur ce lien</a>.
+				</div>
+				<div class="row">&nbsp;</div>
 				<div class="row">
 					<div class="col-lg-8">
 						<table class="table table-condensed table-bordered">
@@ -59,7 +117,37 @@
 						</ul>
 					</div>
 				</div>
-				<div class="row h4">
-					Vous pouvez inviter des personnes dans ce groupe en cliquant <a href="mailto:?Subject=Venez me rejoindre sur unpari.fr&body=Bonjour,%0D%0AVenez me rejoindre sur http://unpari.fr.%0D%0AIl suffit de rentrer dans le site en utilisant son compte Facebook puis de cliquer sur le bouton 'Rejoindre un groupe'.%0D%0AIl vous faut alors de saisir le nom suivant en respectant la casse:{{group.name}}.%0D%0A%0D%0AMerci,%0D%0A{{user.last_name}} {{user.first_name}}" target="_top">sur ce lien</a>.
+				<div class="row">&nbsp;</div>
+				<div class="row">
+					<h3 class="col-lg-6">Configuration des paris hors poules:</h3>
+				</div>
+				<div class="row">
+					<div class="col-lg-6">
+						<table id="setupTable" class="table">
+							<tr><th class="col-lg-6">Etape</th><th class="col-lg-4">Point(s) attribué(s) par bon pronostic</th><th class="col-lg-2">Utilise les cotations</th><th>Action</th></tr>
+							{% for setup in winner_setup.setup.all %}
+							<tr class='setup-row'>
+								<td id='stepColumn_{{forloop.counter0}}'>
+									<select id='stepValue_{{forloop.counter0}}' class='form-control' onchange='saveWinnerSetup()'>
+										{% with value=setup.category.identifier %}
+											{% include 'statics/match_type_en.html' %}
+										{% endwith %}
+									</select>
+								</td>
+								<td id='scoreColumn_{{forloop.counter0}}'>
+									<div>
+										<input id='pointsValue_{{forloop.counter0}}' class='form-control text-center num-only' value='{{setup.points}}' onchange='saveWinnerSetup()'/>
+									</div>
+								</td>
+								<td id='quoteColumn_{{forloop.counter0}}' class='text-center'>
+									<input id='quoteValue_{{forloop.counter0}}' type='checkbox' class='formControl' value='quote' onchange='saveWinnerSetup()' {% if setup.use_quotes %}checked{% endif %}/>
+								</td>
+								<td><button role="button" class="btn btn-warning" onclick="removeSetup({{forloop.counter0}})">Enlever</button></td>
+							</tr>
+							{% endfor %}
+						</table>
+					</div>
+				</div>
+				<button id="addSetup" class="btn btn-default col-lg-offset-4" style="float: left;" onclick="addSetup()"><span class="glyphicon glyphicon-plus"></span> Ajouter une configuration</button> 
 				</div>
 {% endblock %}

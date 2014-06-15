@@ -14,7 +14,7 @@ import logging
 import os
 import traceback
 from django.template.context import Context
-from gso_betsforfriends.settings import RESOURCES_MAIN_PATH, STATICS_PATH
+from gso_betsforfriends.settings import RESOURCES_MAIN_PATH, STATICS_PATH, STATIC_TEMPLATES_PATH
 from django.db.models.aggregates import Sum
 from seq_common.network import soap
 from suds.client import Client
@@ -47,8 +47,10 @@ def generate_attributes():
         rendition = template.render(context)
         # TODO Implement multi-langage
         outfile = os.path.join(STATICS_PATH, 'attributes', a_type.type + '_en.html')
-        with open(outfile,'w') as o:
+        templatefile = os.path.join(STATIC_TEMPLATES_PATH, a_type.type + '_en.html')
+        with open(outfile,'w') as o, open(templatefile, 'w') as t:
             o.write(rendition.encode('utf-8'))
+            t.write(rendition.encode('utf-8'))
             
 def generate_events():
     start_date = dates.AddDay(datetime.date.today(),-14)
@@ -565,6 +567,24 @@ class Bet(CoreModel):
 
     def get_fields(self):
         return super(Bet, self).get_fields() + ['owner','when','match','winner','result']
+
+class PointsSetup(CoreModel):
+    category = models.ForeignKey(Attributes, limit_choices_to={'type':'match_type'}, related_name='points_category_rel')
+    points = models.IntegerField(default=3)
+    use_quotes = models.BooleanField(default=False)
+    
+class WinnerSetup(CoreModel):
+    group = models.ForeignKey(Group, related_name='winner_setup_group_rel', null=True)
+    setup = models.ManyToManyField(PointsSetup, related_name='winner_setup_points_rel')
+    
+class Winner(CoreModel):
+    owner = models.ForeignKey(User, related_name='winner_owner_rel')
+    event = models.ForeignKey("BettableEvent", related_name='winner_event_rel')
+    category = models.ForeignKey(Attributes, limit_choices_to={'type':'match_type'}, related_name='winner_category_rel')
+    participants = models.ManyToManyField(Participant, related_name='winner_participant_rel')
+    
+    def get_score(self):
+        return 0
     
 class BettableEvent(CoreModel):
     name = models.CharField(max_length=256)

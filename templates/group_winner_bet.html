@@ -1,0 +1,34 @@
+{% extends "bets_base.html" %}
+{% load bets_tags %}
+{% block title %}{{event.name}}{% endblock %}
+{% block readyoptions %}
+{% endblock %}
+{% block headeroptions %}
+{% endblock %}
+{% block pageheader %}
+						<h1 class="">{{event.name}}</h1>
+						<p class="lead">Sélectionner ici les participants de la compétition qui, d'après vous, accéderont aux phases finales.<br/>
+{% endblock %}
+{% block content %}
+	{% for m_type in match_types %}
+		{% if m_type.identifier in winner_setups %}
+			<div class="row">
+				<div class="col-lg-2 h5">{{m_type.name}}</div>
+				{% for i in steps_count|get_dict_key:m_type.identifier|get_range %}
+				{% if i|divisibleby:5 and i > 5 %}
+				<div class="col-lg-2"></div>
+				{% endif %}
+				<div class="col-lg-2">
+					<select id="{{m_type.indentifier}}_{{i}}" class="form-control">
+						{% for part in event.participants.all %}
+							<option value="{{part.id}}">{{part.name}}</option>
+						{% endfor %}
+					</select>
+				</div>
+
+				{% endfor %}
+			</div>
+		{% endif %}
+		<div class="row">&nbsp;</div>
+	{% endfor %}
+{% endblock %}

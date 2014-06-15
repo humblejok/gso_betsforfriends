@@ -22,3 +22,6 @@ def get_dict_key(d, key):
     else:
         return None
 
+@register.filter()
+def get_range(num):
+    return range(num)

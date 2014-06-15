@@ -3,7 +3,8 @@ from django.shortcuts import render, redirect
 
 from bets.models import Group, Match, Bet, Score, UserRanking, LOGGER,\
     BettableEvent, generate_matchs, compute_event_ranking, compute_group_ranking,\
-    compute_overall_ranking, generate_events
+    compute_overall_ranking, generate_events, WinnerSetup, PointsSetup,\
+    Attributes
 from django.http.response import HttpResponse, HttpResponseForbidden,\
     HttpResponseBadRequest
 from django.contrib.auth.models import User
@@ -14,6 +15,16 @@ import traceback
 from django.db.models.aggregates import Sum
 import json
 from django.core.exceptions import PermissionDenied
+
+
+COUNT_PER_STEP = {'MATCH_SIXTEENTH': 32,
+                  'MATCH_EIGHTH': 16,
+                  'MATCH_QUARTER': 8,
+                  'MATCH_SEMIFINAL': 4,
+                  'MATCH_FINAL' : 2,
+                  'MATCH_THIRDPLACE' : 2,
+                  'MATCH_WINNER' : 1
+                  }
 
 def index(request):
     now = datetime.datetime.today()
@@ -41,6 +52,17 @@ def index(request):
 
         admin_groups = Group.objects.filter(Q(owners__id__exact=request.user.id)).distinct().order_by('name')
         member_groups = Group.objects.filter(Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id)).distinct().order_by('name')
+
+        winner_setups = []
+        for group in list(admin_groups) + list(member_groups):
+            setup = WinnerSetup.objects.filter(group__id=group.id, group__event__end_date__gte=now)
+            if setup.exists():
+                setup = setup[0]
+                all_steps = setup.setup.all()
+                if all_steps.exists():
+                    if not group.event.id in winner_setups:
+                        winner_setups.append(group.event.id)
+
         all_matches = Match.objects.filter(when__gte=begin, when__lte=end).order_by('when')
         all_bets = {}
         for match in all_matches:
@@ -63,10 +85,52 @@ def index(request):
                 bet.save()
             all_bets[bet.match.id] = {'id': bet.id, 'score': {'first':bet.result.first, 'second':bet.result.second}, 'enabled':str(bet.match.when + datetime.timedelta(minutes=10)>=now).lower(), 'amount': bet.amount if bet.amount!=None else 0}
         allow_amount = request.user.groups.filter(name='allow_amount')
-        context = {'admin_groups': admin_groups,'member_groups': member_groups, 'all_dates': all_dates, 'all_bets': all_bets, 'rankings': rankings, 'global_rank':global_ranking, 'events': active_events, 'allow_amount': allow_amount, 'events': active_events}
+
+        context = {'winner_setups': winner_setups, 'admin_groups': admin_groups,'member_groups': member_groups, 'all_dates': all_dates, 'all_bets': all_bets, 'rankings': rankings, 'global_rank':global_ranking, 'events': active_events, 'allow_amount': allow_amount, 'events': active_events}
     else:
         context = {'all_dates': all_dates, 'events': active_events, 'all_bets': []}
     return render(request,'index.html', context)
+
+def bets_winner_save(request):
+    if request.user.is_authenticated and request.user.id!=None:
+        group_id = request.POST['group_id']
+        user = User.objects.get(id=request.user.id)
+        try:
+            group = Group.objects.get(id=group_id)
+            if group.owners.filter(id=user.id).exists():
+                data = request.POST['data']
+                print data
+                data = json.loads(data)
+                first = True
+                for row in data:
+                    if first:
+                        winner_setup = WinnerSetup.objects.filter(group__id=group.id)
+                        if winner_setup.exists():
+                            winner_setup = winner_setup[0]
+                            for p_setup in winner_setup.setup.all():
+                                p_setup.delete()
+                            winner_setup.setup.clear()
+                        else:
+                            winner_setup = WinnerSetup()
+                            winner_setup.group = group
+                            winner_setup.clean()
+                            winner_setup.save()
+                        first = False
+                    point_setup = PointsSetup()
+                    point_setup.category = Attributes.objects.get(identifier=row[u'step'])
+                    point_setup.points = row[u'points']
+                    point_setup.use_quotes = row[u'quote']
+                    point_setup.save()
+                    winner_setup.setup.add(point_setup)
+                    winner_setup.save()
+                return HttpResponse('{"result": true, "message":"Saved"}', content_type="application/json");
+            else:
+                raise PermissionDenied()
+        except:
+            traceback.print_exc()
+            return HttpResponseBadRequest()
+    else:
+        raise PermissionDenied()
 
 def bets_save(request):
     if request.user.is_authenticated and request.user.id!=None:
@@ -129,7 +193,13 @@ def group_edit(request):
                 ranking = UserRanking.objects.filter(owner__id__in=all_users, group__id=group.id)
                 your_rank = UserRanking.objects.get(owner__id=user.id, group__id=group.id)
                 allow_amount = request.user.groups.filter(name='allow_amount')
-                context = {'group': group, 'ranking':ranking, 'yours': your_rank, 'betted_amounts':betted_amounts, 'allow_amount':allow_amount,'locked_amounts':locked_amounts}
+                winner_setup = WinnerSetup.objects.filter(group__id=group.id)
+                if winner_setup.exists():
+                    winner_setup = winner_setup[0]
+                else:
+                    winner_setup = None
+                
+                context = {'group': group, 'ranking':ranking, 'yours': your_rank, 'betted_amounts':betted_amounts, 'allow_amount':allow_amount,'locked_amounts':locked_amounts, 'winner_setup': winner_setup}
                 return render(request,'group_edit.html', context)
             else:
                 raise PermissionDenied()
@@ -177,6 +247,28 @@ def group_compare(request):
     else:
         raise PermissionDenied()
     
+def group_winner_bet(request):
+    if request.user.is_authenticated and request.user.id!=None:
+        event_id = request.GET['event_id']
+        event = BettableEvent.objects.get(id=event_id)
+        admin_groups = Group.objects.filter(owners__id__exact=request.user.id,event__id=event_id).distinct().order_by('name')
+        member_groups = Group.objects.filter(Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id), Q(event__id=event_id)).distinct().order_by('name')
+        winner_setups = []
+        all_setups = WinnerSetup.objects.filter(group__in=list(admin_groups) + list(member_groups))
+        for setup in all_setups:
+            all_steps = setup.setup.all().order_by('id').values_list('category__identifier', flat=True)
+            for step in all_steps:
+                if not step in winner_setups:
+                    winner_setups.append(step)
+        print winner_setups
+        if len(winner_setups)==0:
+            winner_setups = None
+        match_types = Attributes.objects.filter(active=True, type='match_type').order_by('id')
+        context = {'steps_count': COUNT_PER_STEP, 'event': event, 'winner_setups': winner_setups, 'match_types':match_types}
+        return render(request,'group_winner_bet.html', context)
+    else:
+        raise PermissionDenied()
+
 def group_view(request):
     if request.user.is_authenticated and request.user.id!=None:
         group_id = request.GET['group_id']
@@ -199,6 +291,7 @@ def group_view(request):
                         rank = rank[0]
                 all_users = list(group.members.values_list('id', flat=True)) + list(group.owners.values_list('id', flat=True))
                 all_matchs = group.event.matchs.all().values_list('id', flat=True)
+
                 betted_amounts = {}
                 for user_id in all_users:
                     betted_amounts[user_id] = Bet.objects.filter(owner__id=user_id, match__id__in=all_matchs).aggregate(Sum('amount'))['amount__sum']
@@ -207,9 +300,12 @@ def group_view(request):
                     locked_amounts[user_id] = Bet.objects.filter(owner__id=user_id, match__id__in=all_matchs, match__when__lte=now).aggregate(Sum('amount'))['amount__sum']
                     
                 ranking = UserRanking.objects.filter(owner__id__in=all_users, group__id=group.id)
-                your_rank = UserRanking.objects.get(owner__id=user.id, group__id=group.id)
+                your_rank = UserRanking.objects.filter(owner__id=user.id, group__id=group.id)
+                if your_rank.exists():
+                    your_rank = your_rank[0]
                 allow_amount = request.user.groups.filter(name='allow_amount')
-                context = {'group': group, 'ranking':ranking, 'yours': your_rank, 'betted_amounts':betted_amounts, 'allow_amount':allow_amount,'locked_amounts':locked_amounts}
+                context = {'group': group, 'ranking':ranking, 'yours': your_rank, 'betted_amounts':betted_amounts, 'allow_amount':allow_amount,
+                           'locked_amounts':locked_amounts}
                 return render(request,'group_view.html', context)
             else:
                 raise PermissionDenied()

@@ -160,6 +160,7 @@ CACHES = {
 
 RESOURCES_MAIN_PATH = 'C:\\DEV\\Sources\\gso_betsforfriends\\resources'
 STATICS_PATH = 'C:\\DEV\\Sources\\gso_betsforfriends\\static'
+STATIC_TEMPLATES_PATH = 'C:\\DEV\\Sources\\gso_betsforfriends\\templates\\statics'
 
 
 # A sample logging configuration. The only tangible logging
