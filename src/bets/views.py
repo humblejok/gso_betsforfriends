@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect
 from bets.models import Group, Match, Bet, Score, UserRanking, LOGGER,\
     BettableEvent, generate_matchs, compute_event_ranking, compute_group_ranking,\
     compute_overall_ranking, generate_events, WinnerSetup, PointsSetup,\
-    Attributes
+    Attributes, Winner, Participant
 from django.http.response import HttpResponse, HttpResponseForbidden,\
     HttpResponseBadRequest
 from django.contrib.auth.models import User
@@ -99,7 +99,6 @@ def bets_winner_save(request):
             group = Group.objects.get(id=group_id)
             if group.owners.filter(id=user.id).exists():
                 data = request.POST['data']
-                print data
                 data = json.loads(data)
                 first = True
                 for row in data:
@@ -160,6 +159,50 @@ def bets_save(request):
                 LOGGER.warn("Tried to bet after date")
                 message = "Un ou plusieurs matchs ont deja commence."
     return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
+
+def group_winner_bet_save(request):
+    if request.user.is_authenticated and request.user.id!=None:
+        bet_identifier = request.POST['category']
+        bet_data = json.loads(request.POST['data'])
+        event_id = request.POST['event_id']
+        winner_bet = Winner.objects.filter(owner__id=request.user.id, event__id=event_id, category__identifier=bet_identifier)
+        if winner_bet.exists():
+            winner_bet = winner_bet[0]
+            winner_bet.participants.clear()
+            winner_bet.save()
+        else:
+            winner_bet = Winner()
+            winner_bet.owner = User.objects.get(id=request.user.id)
+            winner_bet.event = BettableEvent.objects.get(id=event_id)
+            winner_bet.category = Attributes.objects.get(identifier=bet_identifier, type='match_type')
+            winner_bet.save()
+        for participant_id in bet_data:
+            winner_bet.participants.add(Participant.objects.get(id=participant_id))
+        winner_bet.save()
+        return HttpResponse('{"result": true, "message":"Aucun probleme"}', content_type="application/json");
+    else:
+        raise PermissionDenied()
+
+def group_winner_bet(request):
+    if request.user.is_authenticated and request.user.id!=None:
+        event_id = request.GET['event_id']
+        event = BettableEvent.objects.get(id=event_id)
+        admin_groups = Group.objects.filter(owners__id__exact=request.user.id,event__id=event_id).distinct().order_by('name')
+        member_groups = Group.objects.filter(Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id), Q(event__id=event_id)).distinct().order_by('name')
+        winner_setups = []
+        all_setups = WinnerSetup.objects.filter(group__in=list(admin_groups) + list(member_groups))
+        for setup in all_setups:
+            all_steps = setup.setup.all().order_by('id').values_list('category__identifier', flat=True)
+            for step in all_steps:
+                if not step in winner_setups:
+                    winner_setups.append(step)
+        if len(winner_setups)==0:
+            winner_setups = None
+        match_types = Attributes.objects.filter(active=True, type='match_type').order_by('id')
+        context = {'steps_count': COUNT_PER_STEP, 'event': event, 'winner_setups': winner_setups, 'match_types':match_types}
+        return render(request,'group_winner_bet.html', context)
+    else:
+        raise PermissionDenied()
 
 def group_edit(request):
     if request.user.is_authenticated and request.user.id!=None:
@@ -247,28 +290,6 @@ def group_compare(request):
     else:
         raise PermissionDenied()
     
-def group_winner_bet(request):
-    if request.user.is_authenticated and request.user.id!=None:
-        event_id = request.GET['event_id']
-        event = BettableEvent.objects.get(id=event_id)
-        admin_groups = Group.objects.filter(owners__id__exact=request.user.id,event__id=event_id).distinct().order_by('name')
-        member_groups = Group.objects.filter(Q(members__id__exact=request.user.id) | Q(owners__id__exact=request.user.id), Q(event__id=event_id)).distinct().order_by('name')
-        winner_setups = []
-        all_setups = WinnerSetup.objects.filter(group__in=list(admin_groups) + list(member_groups))
-        for setup in all_setups:
-            all_steps = setup.setup.all().order_by('id').values_list('category__identifier', flat=True)
-            for step in all_steps:
-                if not step in winner_setups:
-                    winner_setups.append(step)
-        print winner_setups
-        if len(winner_setups)==0:
-            winner_setups = None
-        match_types = Attributes.objects.filter(active=True, type='match_type').order_by('id')
-        context = {'steps_count': COUNT_PER_STEP, 'event': event, 'winner_setups': winner_setups, 'match_types':match_types}
-        return render(request,'group_winner_bet.html', context)
-    else:
-        raise PermissionDenied()
-
 def group_view(request):
     if request.user.is_authenticated and request.user.id!=None:
         group_id = request.GET['group_id']

@@ -2,8 +2,62 @@
 {% load bets_tags %}
 {% block title %}{{event.name}}{% endblock %}
 {% block readyoptions %}
+			var allMatchTypes = [{% for m_type in match_types %}{% if m_type.identifier in winner_setups %}"{{m_type.identifier}}"{% if forloop.last %}{% else %},{% endif %}{% endif %}{% endfor %}];
+			for (var i = 0; i < allMatchTypes.length; i++) {
+				selectionChanged(allMatchTypes[i]);
+			}
 {% endblock %}
 {% block headeroptions %}
+	<script>
+
+		function betsNotSaved(e) {
+			alert("An error occured while saving [" + e.message + "].");
+		}
+
+		function betsSaved(e) {
+			if (e.result) {
+				// Nothing to do
+			} else {
+				betsNotSaved(e);
+			}
+		}
+
+		function saveSelection(dataId, values) {
+			var saveWinners = new FormData();
+			saveWinners.append('category', dataId);
+			saveWinners.append('event_id', {{event.id}});
+			saveWinners.append('data', JSON.stringify(values));
+			$.ajax({
+				url: '/group_winner_bet_save.html',
+				type: 'POST',
+				data: saveWinners,
+				processData: false,
+				contentType: false,
+				success: betsSaved,
+				error: betsNotSaved
+			});
+		}
+
+		function selectionChanged(dataId) {
+			var values = [];
+			$(".sel-" + dataId).each(function() {
+				$(this).children().each(function() {
+					$(this).removeAttr("disabled");
+				});
+				values.push($(this).val());
+			});
+			$(".sel-" + dataId).each(function(index) {
+				var work = values.slice();
+				work.splice(work.indexOf($(this).val()), 1);
+				$(this).children().each(function() {
+					if (($.inArray($(this).val(), work)!=-1)) {
+						$(this).attr("disabled","disabled");
+					}
+				});
+			});
+			saveSelection(dataId, values);
+		}
+	</script>
 {% endblock %}
 {% block pageheader %}
 						<h1 class="">{{event.name}}</h1>
@@ -13,19 +67,18 @@
 	{% for m_type in match_types %}
 		{% if m_type.identifier in winner_setups %}
 			<div class="row">
-				<div class="col-lg-2 h5">{{m_type.name}}</div>
+				<div class="col-lg-2 h5"><strong>{{m_type.name}}</strong></div>
 				{% for i in steps_count|get_dict_key:m_type.identifier|get_range %}
-				{% if i|divisibleby:5 and i > 5 %}
-				<div class="col-lg-2"></div>
-				{% endif %}
-				<div class="col-lg-2">
-					<select id="{{m_type.indentifier}}_{{i}}" class="form-control">
-						{% for part in event.participants.all %}
-							<option value="{{part.id}}">{{part.name}}</option>
-						{% endfor %}
-					</select>
-				</div>
-
+					{% if i|divisibleby:5 and i > 5 %}
+					<div class="col-lg-2"></div>
+					{% endif %}
+					<div class="col-lg-2">
+						<select id="{{m_type.identifier}}_{{i}}" class="form-control sel-{{m_type.identifier}}" onchange="selectionChanged('{{m_type.identifier}}')">
+							{% for part in event.participants.all %}
+								<option value="{{part.id}}" {% if forloop.counter0 == i %}selected{% endif %}>{{part.name}}</option>
+							{% endfor %}
+						</select>
+					</div>
 				{% endfor %}
 			</div>
 		{% endif %}

@@ -23,6 +23,7 @@ urlpatterns = patterns('',
     url(r'^group_edit.html$', 'bets.views.group_edit', name='group_edit'),
     url(r'^group_remove_user.html$', 'bets.views.group_remove_user', name='group_remove_user'),
     url(r'^group_winner_bet.html$', 'bets.views.group_winner_bet', name='group_winner_bet'),
+    url(r'^group_winner_bet_save.html$', 'bets.views.group_winner_bet_save', name='group_winner_bet_save'),
     
     
     url(r'^matchs_edit.html$', 'bets.views.matchs_edit', name='matchs_edit'),
@@ -36,7 +37,6 @@ urlpatterns = patterns('',
     
     url(r'^bets_save.html$', 'bets.views.bets_save', name='bets_save'),
     url(r'^bets_winner_save.html$', 'bets.views.bets_winner_save', name='bets_winner_save'),
-    
     
     
     
