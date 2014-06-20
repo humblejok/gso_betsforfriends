@@ -15,6 +15,7 @@ import traceback
 from django.db.models.aggregates import Sum
 import json
 from django.core.exceptions import PermissionDenied
+from bets import utilities
 
 
 COUNT_PER_STEP = {'MATCH_SIXTEENTH': 32,
@@ -159,6 +160,17 @@ def bets_save(request):
                 LOGGER.warn("Tried to bet after date")
                 message = "Un ou plusieurs matchs ont deja commence."
     return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
+
+def event_view(request):
+    viewed_user = None
+    if request.GET.has_key('user_id'):
+        user_id = request.GET['user_id']
+        viewed_user = User.objects.get(id=user_id)
+    event_id = request.GET['event_id']
+    event = BettableEvent.objects.get(id=event_id)
+    event_data = utilities.get_event_meta(event)
+    context = {"event": event, "event_data": event_data, "viewed_user": viewed_user}
+    return render(request,'event_view.html', context)
 
 def group_winner_bet_save(request):
     if request.user.is_authenticated and request.user.id!=None:

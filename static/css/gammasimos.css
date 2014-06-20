@@ -17,6 +17,8 @@
     -ms-transform:rotate(-90deg); 
 }
 
+table.fixed { table-layout:fixed; padding-right:0; padding-left:0;}
+
 .vertical-center {
   vertical-align: middle;
 }

@@ -14,6 +14,9 @@ urlpatterns = patterns('',
     url(r'^admin/', include(admin.site.urls)),
     # Main page
     url(r'^index.html$', 'bets.views.index', name='index'),
+    
+    url(r'^event_view.html$', 'bets.views.event_view', name='event_view'),    
+    
     url(r'^group_compare.html$', 'bets.views.group_compare', name='group_compare'),    
     url(r'^group_create.html$', 'bets.views.group_create', name='group_create'),
     url(r'^group_details.html$', 'bets.views.group_details', name='group_details'),

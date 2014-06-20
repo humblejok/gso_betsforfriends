@@ -1,0 +1,61 @@
+{% extends "bets_base.html" %}
+{% load bets_tags %}
+{% block title %}{{event.name}}{% endblock %}
+{% block readyoptions %}
+						
+{% endblock %}
+{% block headeroptions %}
+	<script>
+	</script>
+{% endblock %}
+{% block pageheader %}
+						<h1 class="">{{event.name}}</h1>
+						<p class="lead">{% if viewed_user %}{% else %}Résultats complets de la compétition.{% endif %}
+{% endblock %}
+{% block content %}
+				<div class="row">
+					<div class="col-lg-2" style="padding-right:0px; padding-left:0px;">
+						<table class="fixed">
+							{% for index in 9|get_range %}
+							<col width="20px"/>
+							{% endfor %}
+							{% for match in event_data|get_dict_key:"MATCH_EIGHTH" %}
+							<tr class="{% if match.result and match.winner.id == match.first.id %}success{% elif match.result and match.winner.id != match.first.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.first.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.result %}match.result.first{% else %}-{% endif %}</td></tr>
+							<tr class="{% if match.result and match.winner.id == match.second.id %}success{% elif match.result and match.winner.id != match.second.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.second.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.result %}match.result.second{% else %}-{% endif %}</td></tr>
+							<tr><td colspan=9 style="border: None;">&nbsp;</td></tr>
+							<tr><td colspan=9 style="border: None;">&nbsp;</td></tr>
+							{% endfor %}
+						</table>
+					</div>
+					<div class="col-lg-2" style="padding-right:0px; padding-left:0px;">
+						<table class="fixed">
+							{% for index in 9|get_range %}
+							<col width="20px"/>
+							{% endfor %}
+							{% for match in event_data|get_dict_key:"MATCH_EIGHTH" %}
+							<tr><td colspan=5 style="overflow: hidden;border-bottom: 1px solid black">&nbsp;</td><td colspan=4>&nbsp;</td></tr>
+							<tr><td colspan=5 style="">&nbsp;</td><td colspan=4 style="overflow: hidden;border-bottom: 1px solid black;border-left: 1px solid black">&nbsp;</td></tr>
+							<tr><td colspan=9 style="border: None;">&nbsp;</td></tr>
+							<tr><td colspan=9 style="border: None;">&nbsp;</td></tr>
+							{% endfor %}
+						</table>
+					</div>
+				</div>
+				<div class="row">
+					{% for group in event_data|get_dict_key:"groups_list" %}
+						{% if forloop.counter0 != 0 and forloop.counter0|divisibleby:4 %}
+				</div>
+				<div class="row">
+						{% endif %}
+						<div class="col-lg-3">
+							<table class="table table-condensed table-bordered">
+								<tr class="info"><th colspan=3>Groupe {{group}}</th></tr>
+								<tr class="active"><th>Equipe</th><th>Buts</th><th>Points</th></tr>
+								{% for team in event_data|get_dict_key:"groups"|get_dict_key:group %}
+								<tr class="{% if forloop.counter0 < 2 %}success{% else %}warning{% endif %} h6 text-center"><td>{{team.name}}</td><td>{{team.goals}}</td><td>{{team.points}}</td></tr>
+								{% endfor %}
+							</table>
+						</div>
+					{% endfor %}
+				</div>
+{% endblock %}

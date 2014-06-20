@@ -163,6 +163,7 @@
 
 			function somethingChanged() {
 				currentDate = $("#eventDate").val();
+				currentIndex = $.inArray(currentDate, allDates);
 				selectedEventId =$("#bettableEventSelect").val();
 				$("#previousDay").removeClass("invisible");
 				$("#nextDay").removeClass("invisible");
