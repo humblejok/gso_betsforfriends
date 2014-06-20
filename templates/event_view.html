@@ -14,29 +14,36 @@
 {% endblock %}
 {% block content %}
 				<div class="row">
-					<div class="col-lg-2" style="padding-right:0px; padding-left:0px;">
+					<div class="col-lg-2" style="padding-right:0px; padding-left:0px;padding-top:0px; padding-bottom:0px;">
 						<table class="fixed">
 							{% for index in 9|get_range %}
 							<col width="20px"/>
 							{% endfor %}
 							{% for match in event_data|get_dict_key:"MATCH_EIGHTH" %}
-							<tr class="{% if match.result and match.winner.id == match.first.id %}success{% elif match.result and match.winner.id != match.first.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.first.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.result %}match.result.first{% else %}-{% endif %}</td></tr>
-							<tr class="{% if match.result and match.winner.id == match.second.id %}success{% elif match.result and match.winner.id != match.second.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.second.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.result %}match.result.second{% else %}-{% endif %}</td></tr>
-							<tr><td colspan=9 style="border: None;">&nbsp;</td></tr>
-							<tr><td colspan=9 style="border: None;">&nbsp;</td></tr>
+							<tr class="{% if match.result and match.winner.id == match.first.id %}success{% elif match.result and match.winner.id != match.first.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;height: 20px;">{{match.first.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;height: 20px;">{% if match.result %}match.result.first{% else %}-{% endif %}</td></tr>
+							<tr class="{% if match.result and match.winner.id == match.second.id %}success{% elif match.result and match.winner.id != match.second.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;height: 20px;">{{match.second.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;height: 20px;">{% if match.result %}match.result.second{% else %}-{% endif %}</td></tr>
+							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
+							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
 							{% endfor %}
 						</table>
 					</div>
-					<div class="col-lg-2" style="padding-right:0px; padding-left:0px;">
+					<div class="col-lg-2" style="padding-right:0px; padding-left:0px;padding-top:0px; padding-bottom:0px;">
 						<table class="fixed">
 							{% for index in 9|get_range %}
 							<col width="20px"/>
 							{% endfor %}
 							{% for match in event_data|get_dict_key:"MATCH_EIGHTH" %}
-							<tr><td colspan=5 style="overflow: hidden;border-bottom: 1px solid black">&nbsp;</td><td colspan=4>&nbsp;</td></tr>
-							<tr><td colspan=5 style="">&nbsp;</td><td colspan=4 style="overflow: hidden;border-bottom: 1px solid black;border-left: 1px solid black">&nbsp;</td></tr>
-							<tr><td colspan=9 style="border: None;">&nbsp;</td></tr>
-							<tr><td colspan=9 style="border: None;">&nbsp;</td></tr>
+								{% if forloop.counter|divisibleby:2 %}
+							<tr><td colspan=5 style="overflow: hidden;height: 20px;">&nbsp;</td><td colspan=4 style="overflow: hidden;border-top: 1px solid black; border-left: 1px solid black">&nbsp;</td></tr>
+							<tr><td colspan=5 style="overflow: hidden;border-bottom: 1px solid black;border-right: 1px solid black;height: 20px;">&nbsp;</td><td colspan=4 style="overflow: hidden;">&nbsp;</td></tr>
+							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
+							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
+							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
+								{% else %}
+							<tr><td colspan=5 style="overflow: hidden;border-bottom: 1px solid black;height: 20px;">&nbsp;</td><td colspan=4 style="overflow: hidden; height: 20px;">&nbsp;</td></tr>
+							<tr><td colspan=5 style="overflow: hidden;height: 20px;">&nbsp;</td><td colspan=4 style="overflow: hidden;border-left: 1px solid black;height: 20px;">&nbsp;</td></tr>
+							<tr><td colspan=5 style="overflow: hidden;height: 20px;">&nbsp;</td><td colspan=4 style="border: None;border-bottom: 1px solid black;border-left: 1px solid black;height: 20px;">&nbsp;</td></tr>
+								{% endif %}
 							{% endfor %}
 						</table>
 					</div>
