@@ -165,6 +165,7 @@
 				currentDate = $("#eventDate").val();
 				currentIndex = $.inArray(currentDate, allDates);
 				selectedEventId =$("#bettableEventSelect").val();
+
 				$("#previousDay").removeClass("invisible");
 				$("#nextDay").removeClass("invisible");
 				if (currentIndex==0 || currentIndex==-1) {
@@ -178,6 +179,7 @@
 				$("#winnerBetButton").removeClass("invisible");
 				var eventId = Number($("#bettableEventSelect").val());
 				$("#winnerBetButton").prop("href","/group_winner_bet.html?event_id=" + eventId);
+				$("#eventViewButton").prop("href","/event_view.html?event_id=" + eventId);
 				if ($.inArray(eventId, winnerSetup)==-1) {
 					$("#winnerBetButton").addClass("invisible");
 				}
@@ -221,22 +223,26 @@
 							{% endfor %}
 						</ul>
 					</div>
-					<div class="col-lg-3 col-lg-offset-2">
+					<div class="col-lg-3 col-lg-offset-1">
 						<select id="bettableEventSelect" class="form-control" onchange="somethingChanged()">
 							{% for event in events %}
 							<option value="{{event.id}}">{{event.name}}</option>
 							{% endfor %}
 						</select>
 					</div>
+					<div>
+			            <a href="#" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Gérer les résultats des matchs" id="eventViewButton">
+			              <span class="glyphicon glyphicon-search"></span>
+			            </a>
+					</div>
+
 				</div>
 				<div class="row">&nbsp;</div>
 				<div class="row" id="eventTableDiv">
 				</div>
 				<div class="row">&nbsp;</div>
 				<div class="row">
-					<!-- Waiting for full delivery
 					<a id="winnerBetButton" href="#" class="btn btn-warning col-lg-2" role="button" data-placement="bottom" title="Sélectionner les équipes qui sortiront des poules et participeront aux étapes finales de la compétition">Phases finales</a>
-					-->
 	  				<a href="#modal_join" class="btn btn-primary col-lg-offset-7" role="button" data-toggle="modal" data-placement="bottom" title="Rejoindre un groupe existant">Rejoindre un groupe</a>
 	  				<a href="#modal_create" class="btn btn-success" role="button" data-toggle="modal" data-placement="bottom" title="Créer un nouveau groupe dans lequel vous pourrez inviter vos amis">Créer un groupe</a>
 	  			</div>

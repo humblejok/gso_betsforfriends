@@ -30,7 +30,8 @@ def set_event_meta(event, event_meta):
 
 def feed_fifa_wc2014():
     database = client['bets']
-    event_meta = { 'final_phases' : ['MATCH_EIGHTH', 'MATCH_QUARTER', 'MATCH_SEMIFINAL', 'MATCH_FINAL'],
+    event_meta = { 'matches_per_type': MATCHS_PER_TYPE,
+                   'final_phases' : ['MATCH_EIGHTH', 'MATCH_QUARTER', 'MATCH_SEMIFINAL', 'MATCH_FINAL'],
                    'groups_list' : ['A','B','C','D','E','F','G','H'],
                    'groups': { 'A': [{'id': 450, 'name':"Brazil"}, {'id': 467, 'name':"Mexico"}, {'id': 451, 'name':"Cameroon"}, {'id': 456, 'name':"Croatia"}],
                                'B': [{'id': 468, 'name':"Netherlands"}, {'id': 452, 'name':"Chile"}, {'id': 447, 'name':"Australia"}, {'id': 473, 'name':"Spain"}],
@@ -52,6 +53,20 @@ def search_in(dicts, _id):
         return None
     else:
         return values[0]
+    
+def generates_per_participant_result(event):
+    event_meta = get_event_meta(event)
+    participants_matchs = {}
+    for match in event.matchs.filter(result__isnull=False).order_by('when'):
+        if not participants_matchs.has_key(str(match.first.id)):
+            participants_matchs[str(match.first.id)] = []
+        if not participants_matchs.has_key(str(match.second.id)):
+            participants_matchs[str(match.second.id)] = []
+        participants_matchs[str(match.first.id)].append({'first':{'name':match.first.name, 'id':match.first.id, 'score': match.result.first}, 'second':{'name':match.second.name, 'id':match.second.id, 'score': match.result.second}})
+        participants_matchs[str(match.second.id)].append({'first':{'name':match.second.name, 'id':match.second.id, 'score': match.result.second}, 'second':{'name':match.first.name, 'id':match.first.id, 'score': match.result.first}})
+    event_meta['participants_matchs'] = participants_matchs
+    set_event_meta(event, event_meta)
+            
     
 
 def compute_fifa_wc_pools(event):
@@ -136,7 +151,7 @@ def compute_fifa_wc_8th(event):
 def complete_fifa_wc(event, match_type):
     event_meta = get_event_meta(event)
     event_meta[match_type] = []
-    all_matchs = event.matchs.filter(type__identifier='MATCH_EIGHTH').order_by('when')
+    all_matchs = event.matchs.filter(type__identifier=match_type).order_by('when')
     for match in all_matchs:
         match_details = {'first' : {'id': match.first.id, 'name': match.first.name},
                          'second': {'id': match.second.id, 'name': match.second.name},
@@ -149,12 +164,12 @@ def complete_fifa_wc(event, match_type):
                                                 else {'id': match.second.id, 'name': match.second.name}}
         event_meta[match_type].append(match_details)
     if not all_matchs.exists():
-        for i in MATCHS_PER_TYPE[match_type]:
+        for i in range(0,MATCHS_PER_TYPE[match_type]):
             match_details = {'first' : {'id': None, 'name': None},
                      'second': {'id': None, 'name': None},
                      'id': None
             }
-        event_meta[match_type].append(match_details)
+            event_meta[match_type].append(match_details)
     set_event_meta(event, event_meta)
     
 def compute_fifa_wc_table(event):

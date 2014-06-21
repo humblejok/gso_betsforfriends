@@ -4,6 +4,7 @@ Created on 10 mars 2014
 @author: humble_jok
 '''
 from django import template
+from bets.models import Attributes
 
 register = template.Library()
 
@@ -25,3 +26,22 @@ def get_dict_key(d, key):
 @register.filter()
 def get_range(num):
     return range(num)
+
+@register.filter()
+def multiply(initial, mult):
+    return initial * mult
+
+
+@register.filter()
+def divide(initial, div):
+    return initial / div
+
+@register.filter()
+def get_downshifts(initial, current):
+    if initial==current:
+        return 0
+    return get_downshifts(initial, current * 2) + (initial / (current * 2))
+
+@register.filter()
+def get_attribute(attr_type, attr_ident):
+    return Attributes.objects.get(type=attr_type, identifier=attr_ident)

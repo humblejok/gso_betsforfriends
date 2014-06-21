@@ -1,4 +1,4 @@
-{% extends "bets_base.html" %}
+{% extends "bets_base_noauth.html" %}
 {% load bets_tags %}
 {% block title %}{{event.name}}{% endblock %}
 {% block readyoptions %}
@@ -14,40 +14,46 @@
 {% endblock %}
 {% block content %}
 				<div class="row">
-					<div class="col-lg-2" style="padding-right:0px; padding-left:0px;padding-top:0px; padding-bottom:0px;">
-						<table class="fixed">
-							{% for index in 9|get_range %}
-							<col width="20px"/>
-							{% endfor %}
-							{% for match in event_data|get_dict_key:"MATCH_EIGHTH" %}
-							<tr class="{% if match.result and match.winner.id == match.first.id %}success{% elif match.result and match.winner.id != match.first.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;height: 20px;">{{match.first.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;height: 20px;">{% if match.result %}match.result.first{% else %}-{% endif %}</td></tr>
-							<tr class="{% if match.result and match.winner.id == match.second.id %}success{% elif match.result and match.winner.id != match.second.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;height: 20px;">{{match.second.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;height: 20px;">{% if match.result %}match.result.second{% else %}-{% endif %}</td></tr>
-							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
-							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
-							{% endfor %}
-						</table>
-					</div>
-					<div class="col-lg-2" style="padding-right:0px; padding-left:0px;padding-top:0px; padding-bottom:0px;">
-						<table class="fixed">
-							{% for index in 9|get_range %}
-							<col width="20px"/>
-							{% endfor %}
-							{% for match in event_data|get_dict_key:"MATCH_EIGHTH" %}
-								{% if forloop.counter|divisibleby:2 %}
-							<tr><td colspan=5 style="overflow: hidden;height: 20px;">&nbsp;</td><td colspan=4 style="overflow: hidden;border-top: 1px solid black; border-left: 1px solid black">&nbsp;</td></tr>
-							<tr><td colspan=5 style="overflow: hidden;border-bottom: 1px solid black;border-right: 1px solid black;height: 20px;">&nbsp;</td><td colspan=4 style="overflow: hidden;">&nbsp;</td></tr>
-							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
-							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
-							<tr><td colspan=9 style="overflow: hidden;border: None;height: 20px;">&nbsp;</td></tr>
-								{% else %}
-							<tr><td colspan=5 style="overflow: hidden;border-bottom: 1px solid black;height: 20px;">&nbsp;</td><td colspan=4 style="overflow: hidden; height: 20px;">&nbsp;</td></tr>
-							<tr><td colspan=5 style="overflow: hidden;height: 20px;">&nbsp;</td><td colspan=4 style="overflow: hidden;border-left: 1px solid black;height: 20px;">&nbsp;</td></tr>
-							<tr><td colspan=5 style="overflow: hidden;height: 20px;">&nbsp;</td><td colspan=4 style="border: None;border-bottom: 1px solid black;border-left: 1px solid black;height: 20px;">&nbsp;</td></tr>
+					{% with matchs_num=event_data.matches_per_type|get_dict_key:event_data.final_phases.0 %}
+					{% for match_type in event_data.final_phases %}
+						{% with current=event_data.matches_per_type|get_dict_key:match_type %}
+						{% with downshift=matchs_num|get_downshifts:current %}
+						<div class="col-lg-2 success">
+							<table class="fixed">
+								{% for index in 9|get_range %}
+								<col width="20px"/>
+								{% endfor %}
+								<tr><th colspan=9 class="text-center">{% with attr_type="match_type"|get_attribute:match_type %}{{attr_type}}{% if not forloop.last %}s{% endif %}{% endwith %}</th></tr>
+								{% for match in event_data|get_dict_key:match_type %}
+								{% if not forloop.parentloop.first %}
+									{% for i in downshift|get_range %}
+									<tr><td colspan=9 style="overflow: hidden;border: 1px solid white;">&nbsp;</td></tr>
+									<tr><td colspan=9 style="overflow: hidden;border: None;">&nbsp;</td></tr>
+									{% endfor %}
 								{% endif %}
-							{% endfor %}
-						</table>
-					</div>
+								
+								<tr class="{% if match.result and match.winner.id == match.first.id %}success{% elif match.result and match.winner.id != match.first.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.first.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.result %}match.result.first{% else %}-{% endif %}</td></tr>
+								<tr class="{% if match.result and match.winner.id == match.second.id %}success{% elif match.result and match.winner.id != match.second.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.second.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.result %}match.result.second{% else %}-{% endif %}</td></tr>
+								<tr><td colspan=9 style="overflow: hidden;border: None;">&nbsp;</td></tr>
+								<tr><td colspan=9 style="overflow: hidden;border: None;">&nbsp;</td></tr>
+								{% if not forloop.parentloop.first %}
+									{% for i in downshift|get_range %}
+								<tr><td colspan=9 style="overflow: hidden;border: None;">&nbsp;</td></tr>
+								<tr><td colspan=9 style="overflow: hidden;border: 1px solid white;">&nbsp;</td></tr>
+									{% endfor %}
+								{% endif %}
+								{% endfor %}
+							</table>
+						</div>
+						{% if not forloop.last %}
+						<div class="col-lg-1">
+						</div>
+						{% endif %}
+						{% endwith %}
+						{% endwith %}
+					{% endfor %}
 				</div>
+				{% endwith %}
 				<div class="row">
 					{% for group in event_data|get_dict_key:"groups_list" %}
 						{% if forloop.counter0 != 0 and forloop.counter0|divisibleby:4 %}
@@ -57,9 +63,11 @@
 						<div class="col-lg-3">
 							<table class="table table-condensed table-bordered">
 								<tr class="info"><th colspan=3>Groupe {{group}}</th></tr>
-								<tr class="active"><th>Equipe</th><th>Buts</th><th>Points</th></tr>
+								<tr class="active"><th class="text-center">Equipe</th><th class="text-center">Buts</th><th class="text-center">Points</th></tr>
 								{% for team in event_data|get_dict_key:"groups"|get_dict_key:group %}
-								<tr class="{% if forloop.counter0 < 2 %}success{% else %}warning{% endif %} h6 text-center"><td>{{team.name}}</td><td>{{team.goals}}</td><td>{{team.points}}</td></tr>
+								{% with matchs=event_data.participants_matchs|get_dict_key:team.id %}
+								<tr class="{% if forloop.counter0 < 2 %}success{% else %}warning{% endif %} h6 text-center"><td><span data-original-title="{% for match in matchs %}{{match.first.name}} {{match.first.score}} - {{match.second.name}} {{match.second.score}}{% if not forloop.last %}<br/>{% endif %}{% endfor %}" data-toggle="tooltip" class="with-tooltip" data-html="true">{{team.name}}</span></td><td>{{team.goals}}</td><td>{{team.points}}</td></tr>
+								{% endwith %}
 								{% endfor %}
 							</table>
 						</div>
