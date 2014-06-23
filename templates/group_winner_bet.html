@@ -2,14 +2,17 @@
 {% load bets_tags %}
 {% block title %}{{event.name}}{% endblock %}
 {% block readyoptions %}
+
 			var allMatchTypes = [{% for m_type in match_types %}{% if m_type.identifier in winner_setups %}"{{m_type.identifier}}"{% if forloop.last %}{% else %},{% endif %}{% endif %}{% endfor %}];
 			for (var i = 0; i < allMatchTypes.length; i++) {
 				selectionChanged(allMatchTypes[i]);
 			}
+			today = Date.today().toString('yyyy-MM-dd');
+
 {% endblock %}
 {% block headeroptions %}
 	<script>
-
+		var today;
 		function betsNotSaved(e) {
 			alert("An error occured while saving [" + e.message + "].");
 		}
@@ -61,27 +64,52 @@
 {% endblock %}
 {% block pageheader %}
 						<h1 class="">{{event.name}}</h1>
-						<p class="lead">Sélectionner ici les participants de la compétition qui, d'après vous, accéderont aux phases finales.<br/>
+						<p class="lead">Sélectionner ici les participants de la compétition qui, d'après vous, accéderont à une ou plusieurs phases finales.<br/>Cela dépend de la configuration de vos divers groupes.
 {% endblock %}
 {% block content %}
+
+	<div class="row">
+		{% for group in event_data|get_dict_key:"groups_list" %}
+			{% if forloop.counter0 != 0 and forloop.counter0|divisibleby:4 %}
+	</div>
+	<div class="row">
+			{% endif %}
+			<div class="col-lg-3">
+				<table class="table table-condensed table-bordered">
+					<tr class="info"><th colspan=3>Groupe {{group}}</th></tr>
+					<tr class="active"><th class="text-center">Equipe</th><th class="text-center">Buts</th><th class="text-center">Points</th></tr>
+					{% for team in event_data|get_dict_key:"groups"|get_dict_key:group %}
+					{% with matchs=event_data.participants_matchs|get_dict_key:team.id %}
+					<tr class="{% if forloop.counter0 < 2 %}success{% else %}warning{% endif %} h6 text-center"><td><span data-original-title="Côte: {{team.quote}}<br/>{% for match in matchs %}{{match.first.name}} {{match.first.score}} - {{match.second.name}} {{match.second.score}}{% if not forloop.last %}<br/>{% endif %}{% endfor %}" data-toggle="tooltip" class="with-tooltip" data-html="true">{{team.name}}</span></td><td>{{team.goals}}</td><td>{{team.points}}</td></tr>
+					{% endwith %}
+					{% endfor %}
+				</table>
+			</div>
+		{% endfor %}
+	</div>
+
 	{% for m_type in match_types %}
 		{% if m_type.identifier in winner_setups %}
+			{% with pre_selected=bets_data|get_dict_key:m_type.identifier %}
 			<div class="row">
 				<div class="col-lg-2 h5"><strong>{{m_type.name}}</strong></div>
 				{% for i in steps_count|get_dict_key:m_type.identifier|get_range %}
-					{% if i|divisibleby:5 and i > 5 %}
-					<div class="col-lg-2"></div>
+					{% if i|divisibleby:4 and not forloop.first %}
+					</div>
+					<div class="row">
+						<div class="col-lg-2"></div>
 					{% endif %}
 					<div class="col-lg-2">
-						<select id="{{m_type.identifier}}_{{i}}" class="form-control sel-{{m_type.identifier}}" onchange="selectionChanged('{{m_type.identifier}}')">
+						<select id="{{m_type.identifier}}_{{i}}" class="form-control sel-{{m_type.identifier}}" onchange="selectionChanged('{{m_type.identifier}}')" {% if not limits_data|get_dict_key:m_type.identifier %}disabled{% endif %}>
 							{% for part in event.participants.all %}
-								<option value="{{part.id}}" {% if forloop.counter0 == i %}selected{% endif %}>{{part.name}}</option>
+								<option value="{{part.id}}" {% if pre_selected %}{% if part.id == pre_selected|get_list_element:i %}selected{% endif %}{% else %}{% if i == forloop.counter0 %}selected{% endif %}{% endif %}>{{part.name}}</option>
 							{% endfor %}
 						</select>
 					</div>
 				{% endfor %}
 			</div>
+			{% endwith %}
+			<div class="row">&nbsp;</div>
 		{% endif %}
-		<div class="row">&nbsp;</div>
 	{% endfor %}
 {% endblock %}

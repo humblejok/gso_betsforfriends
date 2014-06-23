@@ -1,9 +1,5 @@
 from django.contrib.auth.models import User
-from django.contrib.contenttypes import generic
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import Q
-from django.db.models.fields import FieldDoesNotExist
 from django.template import loader
 from openpyxl.reader.excel import load_workbook
 from seq_common.utils import classes, dates
@@ -16,8 +12,8 @@ import traceback
 from django.template.context import Context
 from gso_betsforfriends.settings import RESOURCES_MAIN_PATH, STATICS_PATH, STATIC_TEMPLATES_PATH
 from django.db.models.aggregates import Sum
-from seq_common.network import soap
 from suds.client import Client
+from django.db.models.fields import FieldDoesNotExist
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,9 +44,10 @@ def generate_attributes():
         # TODO Implement multi-langage
         outfile = os.path.join(STATICS_PATH, 'attributes', a_type.type + '_en.html')
         templatefile = os.path.join(STATIC_TEMPLATES_PATH, a_type.type + '_en.html')
-        with open(outfile,'w') as o, open(templatefile, 'w') as t:
-            o.write(rendition.encode('utf-8'))
-            t.write(rendition.encode('utf-8'))
+        with open(outfile,'w') as o:
+            with open(templatefile, 'w') as t:
+                o.write(rendition.encode('utf-8'))
+                t.write(rendition.encode('utf-8'))
             
 def generate_events():
     start_date = dates.AddDay(datetime.date.today(),-14)
@@ -717,10 +714,6 @@ class Provider(CoreModel):
                     result.first = first
                     result.second = second
                     result.save()
-            generate_matchs()
-            compute_event_ranking()
-            compute_group_ranking()
-            compute_overall_ranking()
                     
     
 class ProviderMapping(CoreModel):

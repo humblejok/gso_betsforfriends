@@ -28,19 +28,42 @@ def set_event_meta(event, event_meta):
     client['bets']['events'].remove({'_id': event.id})
     client['bets']['events'].insert(event_meta)
 
+def feed_wimbledon_2014():
+    database = client['bets']
+    event_meta = { 'matches_per_type': MATCHS_PER_TYPE,
+                   'final_phases' : ['MATCH_EIGHTH', 'MATCH_QUARTER', 'MATCH_SEMIFINAL', 'MATCH_FINAL'],
+                   'bets_delays' : {'MATCH_EIGHTH': 1, 'MATCH_QUARTER': 7, 'MATCH_SEMIFINAL': 7, 'MATCH_FINAL': 7, 'MATCH_WINNER': 7},
+                   'groups_list' : [],
+                   'groups': {},
+                   '_id': 8651
+                   }
+    database['events'].remove({'_id': 8651})
+    database['events'].insert(event_meta)
+    database = client['bets']
+    event_meta = { 'matches_per_type': MATCHS_PER_TYPE,
+                   'final_phases' : ['MATCH_EIGHTH', 'MATCH_QUARTER', 'MATCH_SEMIFINAL', 'MATCH_FINAL'],
+                   'bets_delays' : {'MATCH_EIGHTH': 1, 'MATCH_QUARTER': 7, 'MATCH_SEMIFINAL': 7, 'MATCH_FINAL': 7, 'MATCH_WINNER': 7},
+                   'groups_list' : [],
+                   'groups': {},
+                   '_id': 8652
+                   }
+    database['events'].remove({'_id': 8652})
+    database['events'].insert(event_meta)
+
 def feed_fifa_wc2014():
     database = client['bets']
     event_meta = { 'matches_per_type': MATCHS_PER_TYPE,
                    'final_phases' : ['MATCH_EIGHTH', 'MATCH_QUARTER', 'MATCH_SEMIFINAL', 'MATCH_FINAL'],
+                   'bets_delays' : {'MATCH_EIGHTH': 7, 'MATCH_QUARTER': 14, 'MATCH_SEMIFINAL': 14, 'MATCH_FINAL': 14, 'MATCH_WINNER': 14},
                    'groups_list' : ['A','B','C','D','E','F','G','H'],
-                   'groups': { 'A': [{'id': 450, 'name':"Brazil"}, {'id': 467, 'name':"Mexico"}, {'id': 451, 'name':"Cameroon"}, {'id': 456, 'name':"Croatia"}],
-                               'B': [{'id': 468, 'name':"Netherlands"}, {'id': 452, 'name':"Chile"}, {'id': 447, 'name':"Australia"}, {'id': 473, 'name':"Spain"}],
-                               'C': [{'id': 453, 'name':"Colombia"}, {'id': 455, 'name':"Côte d'Ivoire"}, {'id': 462, 'name':"Greece"}, {'id': 466, 'name':"Japan"}],
-                               'D': [{'id': 454, 'name':"Costa Rica"}, {'id': 465, 'name':"Italy"}, {'id': 458, 'name':"England"}, {'id': 475, 'name':"Uruguay"}],
-                               'E': [{'id': 459, 'name':"France"}, {'id': 457, 'name':"Ecuador"}, {'id': 474, 'name':"Switzerland"}, {'id': 463, 'name':"Honduras"}, ],
-                               'F': [{'id': 449, 'name':"Bosnia and Herzegovina"}, {'id': 446, 'name':"Argentina"}, {'id': 464, 'name':"Iran"}, {'id': 469, 'name':"Nigeria"}],
-                               'G': [{'id': 470, 'name':"Portugal"}, {'id': 460, 'name':"Germany"}, {'id': 476, 'name':"USA"}, {'id': 461, 'name':"Ghana"}],
-                               'H': [{'id': 445, 'name':"Algeria"}, {'id': 448, 'name':"Belgium"}, {'id': 471, 'name':"Russia"}, {'id': 472, 'name':"South Korea"}]
+                   'groups': { 'A': [{'id': 450, 'name':"Brazil",'quote': 4.25}, {'id': 467, 'name':"Mexico",'quote': 60.0}, {'id': 451, 'name':"Cameroon",'quote': 0.0}, {'id': 456, 'name':"Croatia",'quote': 100.0}],
+                               'B': [{'id': 468, 'name':"Netherlands",'quote': 10.0}, {'id': 452, 'name':"Chile",'quote': 15.0}, {'id': 447, 'name':"Australia",'quote': 0.0}, {'id': 473, 'name':"Spain",'quote': 0.0}],
+                               'C': [{'id': 453, 'name':"Colombia",'quote': 20.0}, {'id': 455, 'name':"Côte d'Ivoire",'quote': 100.0}, {'id': 462, 'name':"Greece",'quote': 500.0}, {'id': 466, 'name':"Japan",'quote': 501.0}],
+                               'D': [{'id': 454, 'name':"Costa Rica",'quote': 60.0}, {'id': 465, 'name':"Italy",'quote': 20.0}, {'id': 458, 'name':"England",'quote': 0.0}, {'id': 475, 'name':"Uruguay",'quote': 40.0}],
+                               'E': [{'id': 459, 'name':"France",'quote': 7.5}, {'id': 457, 'name':"Ecuador", 'quote': 301.0}, {'id': 474, 'name':"Switzerland",'quote': 150.0}, {'id': 463, 'name':"Honduras",'quote': 2501.0} ],
+                               'F': [{'id': 449, 'name':"Bosnia and Herzegovina",'quote': 0.0}, {'id': 446, 'name':"Argentina",'quote': 4.75}, {'id': 464, 'name':"Iran",'quote': 500.0}, {'id': 469, 'name':"Nigeria",'quote': 150.0}],
+                               'G': [{'id': 470, 'name':"Portugal",'quote': 35.0}, {'id': 460, 'name':"Germany",'quote': 4.50}, {'id': 476, 'name':"USA",'quote': 150.0}, {'id': 461, 'name':"Ghana",'quote': 251.0}],
+                               'H': [{'id': 445, 'name':"Algeria",'quote': 0.0}, {'id': 448, 'name':"Belgium",'quote': 18.0}, {'id': 471, 'name':"Russia",'quote': 150.0}, {'id': 472, 'name':"South Korea",'quote': 500.0}]
                               },
                     '_id': 525
                   }
@@ -146,9 +169,33 @@ def compute_fifa_wc_8th(event):
         effective_match.save()
         event.matchs.add(effective_match)
         event.save()
-    complete_fifa_wc(event,'MATCH_EIGHTH')
+    complete_meta_for_type(event,'MATCH_EIGHTH')
 
-def complete_fifa_wc(event, match_type):
+def complete_any_event(event, match_type):
+    event_meta = get_event_meta(event)
+    event_meta[match_type] = []
+    all_matchs = event.matchs.filter(type__identifier=match_type).order_by('when')
+    for match in all_matchs:
+        match_details = {'first' : {'id': match.first.id, 'name': match.first.name},
+                         'second': {'id': match.second.id, 'name': match.second.name},
+                         'id': match.id
+                }
+        if match.result!=None:
+            match_details['score'] = {'first':match.result.first, 'second':match.result.second,
+                                      'winner': None if match.result.first==match.result.second
+                                                else {'id': match.first.id, 'name': match.first.name} if match.result.first>match.result.second
+                                                else {'id': match.second.id, 'name': match.second.name}}
+        event_meta[match_type].append(match_details)
+    if not all_matchs.exists():
+        for i in range(0,MATCHS_PER_TYPE[match_type]):
+            match_details = {'first' : {'id': None, 'name': None},
+                     'second': {'id': None, 'name': None},
+                     'id': None
+            }
+            event_meta[match_type].append(match_details)
+    set_event_meta(event, event_meta)
+
+def complete_meta_for_type(event, match_type):
     event_meta = get_event_meta(event)
     event_meta[match_type] = []
     all_matchs = event.matchs.filter(type__identifier=match_type).order_by('when')

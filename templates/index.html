@@ -198,9 +198,10 @@
 {% endblock %}
 {% block pageheader %}
 						<h1 class="">Bienvenue {{ request.user.first_name }} {{ request.user.last_name }}</h1>
-			  			<p class="lead">{% if global_rank.rank %}Vous êtes au rang <span class="label label-info">{{global_rank.rank}}</span> avec un score de <span class="label label-info">{{global_rank.overall_score}}</span>.{% else %}Vous n'avez pas encore de classement.{% endif %}
+			  			<p class="lead">{% if not member_groups and not admin_groups %}Avant de pouvoir parier, il va vous falloir rejoindre un groupe existant ou, simplement, en créer un puis inviter des amis.{% else %}Entrez vos paris pour les matchs à venir sur les 14 prochains jours.{% endif %}
 {% endblock %}
 {% block content %}
+				{% if member_groups or admin_groups %}
 				<div class="row">
 					<button id="previousDay" class="btn btn-default" style="float: left;" onclick="changeDay(-1)"><span class="glyphicon glyphicon-chevron-left"></span></button>
 					<div class="col-lg-2">
@@ -231,7 +232,7 @@
 						</select>
 					</div>
 					<div>
-			            <a href="#" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Gérer les résultats des matchs" id="eventViewButton">
+			            <a href="#" class="btn btn-default" role="button" data-toggle="tooltip" data-placement="bottom" title="Voir les résultats des matchs de cet événement" id="eventViewButton">
 			              <span class="glyphicon glyphicon-search"></span>
 			            </a>
 					</div>
@@ -240,6 +241,7 @@
 				<div class="row">&nbsp;</div>
 				<div class="row" id="eventTableDiv">
 				</div>
+				{% endif %}
 				<div class="row">&nbsp;</div>
 				<div class="row">
 					<a id="winnerBetButton" href="#" class="btn btn-warning col-lg-2" role="button" data-placement="bottom" title="Sélectionner les équipes qui sortiront des poules et participeront aux étapes finales de la compétition">Phases finales</a>

@@ -10,7 +10,7 @@
 {% endblock %}
 {% block pageheader %}
 						<h1 class="">{{event.name}}</h1>
-						<p class="lead">{% if viewed_user %}{% else %}Résultats complets de la compétition.{% endif %}
+						<p class="lead">{% if viewed_user %}{% else %}Les résultats complets de la compétition.{% endif %}
 {% endblock %}
 {% block content %}
 				<div class="row">
@@ -66,7 +66,7 @@
 								<tr class="active"><th class="text-center">Equipe</th><th class="text-center">Buts</th><th class="text-center">Points</th></tr>
 								{% for team in event_data|get_dict_key:"groups"|get_dict_key:group %}
 								{% with matchs=event_data.participants_matchs|get_dict_key:team.id %}
-								<tr class="{% if forloop.counter0 < 2 %}success{% else %}warning{% endif %} h6 text-center"><td><span data-original-title="{% for match in matchs %}{{match.first.name}} {{match.first.score}} - {{match.second.name}} {{match.second.score}}{% if not forloop.last %}<br/>{% endif %}{% endfor %}" data-toggle="tooltip" class="with-tooltip" data-html="true">{{team.name}}</span></td><td>{{team.goals}}</td><td>{{team.points}}</td></tr>
+								<tr class="{% if forloop.counter0 < 2 %}success{% else %}warning{% endif %} h6 text-center"><td><span data-original-title="Côte: {{team.quote}}<br/>{% for match in matchs %}{{match.first.name}} {{match.first.score}} - {{match.second.name}} {{match.second.score}}{% if not forloop.last %}<br/>{% endif %}{% endfor %}" data-toggle="tooltip" class="with-tooltip" data-html="true">{{team.name}}</span></td><td>{{team.goals}}</td><td>{{team.points}}</td></tr>
 								{% endwith %}
 								{% endfor %}
 							</table>

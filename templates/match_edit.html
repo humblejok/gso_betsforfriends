@@ -1,9 +1,13 @@
 {% extends "bets_base.html" %}
 {% load bets_tags %}
-{% block title %}Affecter les scores{% endblock %}
+{% block title %}Gérer les scores des matchs{% endblock %}
 {% block readyoptions %}
 				$("#eventDate").datepicker({ dateFormat: "yy-mm-dd", beforeShowDay: availableEventDate });
-				currentIndex = 0;
+				currentDate = Date.today().toString('yyyy-MM-dd');
+				currentIndex = $.inArray(currentDate, allDates);
+				if (currentIndex==-1) {
+					currentIndex = 0;
+				}
 				currentDate = allDates[currentIndex];
 				$("#eventDate").val(currentDate);
 				selectedEventId =$("#bettableEventSelect").val();
@@ -74,6 +78,7 @@
 				all_matchs[currentId]["score"]["second"] = Number(second);
 				var updateForm = new FormData();
 				updateForm.append('all_matchs', JSON.stringify(all_matchs));
+				updateForm.append('event_id', selectedEventId);
 				$.ajax({
 					url: '/matchs_save.html',
 					type: 'POST',
@@ -97,6 +102,7 @@
 				});
 				var updateForm = new FormData();
 				updateForm.append('all_matchs', JSON.stringify(all_matchs));
+				updateForm.append('event_id', selectedEventId);
 				$.ajax({
 					url: '/matchs_save.html',
 					type: 'POST',

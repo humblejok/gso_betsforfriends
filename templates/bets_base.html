@@ -154,7 +154,7 @@
             <table class="table">
               <tr><th>Evénement</th><th>Sport</th><th>Du</th><th>au</th></tr>
             {% for event in events %}
-              <tr><td><a href="/event_view.html?event_id=525">{{event.name}}</a></td><td>{{event.sport.name}}</td><td>{{event.start_date|date:'M d, Y'}}</td><td>{{event.end_date|date:'M d, Y'}}</td></tr>
+              <tr><td><a href="/event_view.html?event_id={{event.id}}">{{event.name}}</a></td><td>{{event.sport.name}}</td><td>{{event.start_date|date:'M d, Y'}}</td><td>{{event.end_date|date:'M d, Y'}}</td></tr>
             {% endfor %}
             </table>
           </div>

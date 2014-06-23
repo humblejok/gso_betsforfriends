@@ -67,7 +67,7 @@
 						{% if match.result %}
 							<tr><td class="success">{{match.name}}<br/><h5 class="text-center"><small>Score final: {{match.display_score}}</small></h5></td>
 							{% for bet in all_bets|get_dict_key:match %}
-								<td class="text-center {% if match.get_winner == bet.winner %}success{% else %}active{% endif %}">{% if match.result.first == bet.result.first and match.result.second == bet.result.second %}<strong>{% endif %}{{bet.result.first}} - {{bet.result.second}}{% if match.result.first == bet.result.first and match.result.second == bet.result.second %}</strong>{% endif %}<br/><h5><small>Point(s): {{bet.get_score}}</small></h5>{% if allow_amount and bet.amount and bet.amount != 0%}<h6><small>Mise: {{bet.amount}}</small></h6>{% endif %}</td>
+								<td class="text-center {% if match.get_winner == bet.winner %}success{% else %}active{% endif %}">{% if match.result.first == bet.result.first and match.result.second == bet.result.second %}<strong>{% endif %}{{bet.result.first}} - {{bet.result.second}}{% if match.result.first == bet.result.first and match.result.second == bet.result.second %}</strong>{% endif %}<br/>{% if allow_amount and bet.amount and bet.amount != 0 %}<h5><small>Point(s): {{bet.get_score}}</small></h5>{% elif not allow_amount %}<h5><small>Point(s): {{bet.get_score}}</small></h5>{% endif %}{% if allow_amount and bet.amount and bet.amount != 0 %}<h6><small>Mise: {{bet.amount}}</small></h6>{% endif %}</td>
 							{% endfor %}
 							</tr>
 						{% endif %}

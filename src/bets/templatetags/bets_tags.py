@@ -23,6 +23,14 @@ def get_dict_key(d, key):
     else:
         return None
 
+@register.filter()   
+def get_list_element(a_list, index):
+    index = int(index)
+    if index>=0 and index<len(a_list):
+        return a_list[index]
+    else:
+        return None
+
 @register.filter()
 def get_range(num):
     return range(num)

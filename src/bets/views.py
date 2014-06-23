@@ -16,6 +16,8 @@ from django.db.models.aggregates import Sum
 import json
 from django.core.exceptions import PermissionDenied
 from bets import utilities
+from bets.utilities import generates_per_participant_result,\
+    compute_fifa_wc_pools, compute_fifa_wc_8th, complete_meta_for_type, get_event_meta
 
 
 COUNT_PER_STEP = {'MATCH_SIXTEENTH': 32,
@@ -197,6 +199,7 @@ def group_winner_bet_save(request):
 
 def group_winner_bet(request):
     if request.user.is_authenticated and request.user.id!=None:
+        now = datetime.date.today()
         event_id = request.GET['event_id']
         event = BettableEvent.objects.get(id=event_id)
         admin_groups = Group.objects.filter(owners__id__exact=request.user.id,event__id=event_id).distinct().order_by('name')
@@ -210,8 +213,18 @@ def group_winner_bet(request):
                     winner_setups.append(step)
         if len(winner_setups)==0:
             winner_setups = None
+        event_meta = get_event_meta(event)
         match_types = Attributes.objects.filter(active=True, type='match_type').order_by('id')
-        context = {'steps_count': COUNT_PER_STEP, 'event': event, 'winner_setups': winner_setups, 'match_types':match_types}
+        winners_bets = Winner.objects.filter(event__id=event_id, owner__id=request.user.id)
+        bets_data = {}
+        limits_data = {}
+        for bet in winners_bets:
+            bets_data[bet.category.identifier] = []
+            limits_data[bet.category.identifier] = event_meta['bets_delays'][bet.category.identifier]>=(now - event.start_date).days
+            for participant in bet.participants.all():
+                bets_data[bet.category.identifier].append(participant.id)
+                
+        context = {'event_data': event_meta, 'steps_count': COUNT_PER_STEP, 'event': event, 'winner_setups': winner_setups, 'match_types':match_types, 'bets_data': bets_data, 'limits_data': limits_data}
         return render(request,'group_winner_bet.html', context)
     else:
         raise PermissionDenied()
@@ -411,6 +424,7 @@ def matchs_save(request):
     if request.user.id!=None and request.user.is_authenticated and request.user.is_superuser:
         message = "Aucun probleme."
         all_matchs = json.loads(request.POST['all_matchs'])
+        event_id = request.POST['event_id']
         for match in all_matchs:
             LOGGER.info("Working on match " + str(match))
             web_match = all_matchs[match]
@@ -427,6 +441,14 @@ def matchs_save(request):
             py_match.result = score
             py_match.save()
         generate_matchs(all_matchs.keys())
+        event = BettableEvent.objects.get(id=event_id)
+        generates_per_participant_result(event)
+        # TODO: Change
+        compute_fifa_wc_pools(event)
+        compute_fifa_wc_8th(event)
+        event_meta = get_event_meta(event)
+        for m_type in event_meta['final_phases'][1:]:
+            complete_meta_for_type(event, m_type)
         return HttpResponse('{"result": true, "message":"' + message + '"}', content_type="application/json");
     else:
         raise PermissionDenied()

@@ -78,7 +78,7 @@
 
 			function addSetup() {
 				var rowCount = $('#setupTable tr').length - 1;
-				var newRow = "<tr class='setup-row'><td id='stepColumn_" + rowCount + "'><select id='stepValue_" + rowCount + "' class='form-control' onchange='saveWinnerSetup()'></select></td><td id='scoreColumn_" + rowCount + "'><div><input id='pointsValue_" + rowCount + "' class='form-control text-center num-only' value='3' onchange='saveWinnerSetup()'/></div></td><td id='quoteColumn_" + rowCount + "' class='text-center'><input id='quoteValue_" + rowCount + "' type='checkbox' class='formControl' value='quote' onchange='saveWinnerSetup()'/></td></tr>";
+				var newRow = "<tr class='setup-row'><td id='stepColumn_" + rowCount + "'><select id='stepValue_" + rowCount + "' class='form-control' onchange='saveWinnerSetup()'></select></td><td id='scoreColumn_" + rowCount + "'><div><input id='pointsValue_" + rowCount + "' class='form-control text-center num-only' value='3' onchange='saveWinnerSetup()'/></div></td><td id='quoteColumn_" + rowCount + "' class='text-center'><input id='quoteValue_" + rowCount + "' type='checkbox' class='formControl' value='quote' onchange='saveWinnerSetup()'/></td><td><button role='button' class='btn btn-warning' onclick='removeSetup(" + rowCount + ")'>Enlever</button></td></tr>";
 				$('#setupTable').append(newRow);
 				applyNumericOnly();
 				$("#stepValue_" + rowCount).load("/static/match_type_en.html",matchTypesLoaded);
