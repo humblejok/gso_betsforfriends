@@ -444,8 +444,9 @@ def matchs_save(request):
         event = BettableEvent.objects.get(id=event_id)
         generates_per_participant_result(event)
         # TODO: Change
-        compute_fifa_wc_pools(event)
-        compute_fifa_wc_8th(event)
+        if event.sport.identifier=='SPORT_FOOTBALL':
+            compute_fifa_wc_pools(event)
+            compute_fifa_wc_8th(event)
         event_meta = get_event_meta(event)
         for m_type in event_meta['final_phases'][1:]:
             complete_meta_for_type(event, m_type)
