@@ -18,6 +18,7 @@ from django.core.exceptions import PermissionDenied
 from bets import utilities
 from bets.utilities import generates_per_participant_result,\
     compute_fifa_wc_pools, compute_fifa_wc_8th, complete_meta_for_type, get_event_meta
+from bets.user_meta import get_user_meta, initialize_user_meta
 
 
 COUNT_PER_STEP = {'MATCH_SIXTEENTH': 32,
@@ -38,6 +39,8 @@ def index(request):
     active_events = BettableEvent.objects.filter(end_date__gte=datetime.date.today).order_by('name')
     if request.user.is_authenticated and request.user.id!=None:
         user = User.objects.get(id=request.user.id)
+        if get_user_meta(user)==None:
+            initialize_user_meta(user)
         rankings = UserRanking.objects.filter(owner__id=user.id)
         if not rankings.exists():
             initial_ranking = UserRanking()

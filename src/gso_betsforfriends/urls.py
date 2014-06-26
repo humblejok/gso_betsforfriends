@@ -41,7 +41,10 @@ urlpatterns = patterns('',
     url(r'^bets_save.html$', 'bets.views.bets_save', name='bets_save'),
     url(r'^bets_winner_save.html$', 'bets.views.bets_winner_save', name='bets_winner_save'),
     
-    
+    # Mobile URLS
+    url(r'^mobile/user_initialize.html$', 'bets.mobile.views.user_initialize', name='user_initialize'),
+    url(r'^mobile/user_token.html$', 'bets.mobile.views.user_token', name='user_token'),
+    url(r'^mobile/login.html$', 'bets.mobile.views.login', name='login'),
     
     url(r'^$', 'bets.views.index', name='home'),
 )

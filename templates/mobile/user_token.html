@@ -1,0 +1,20 @@
+{% extends "bets_base.html" %}
+{% load bets_tags %}
+{% load qr_tags %}
+{% block title %}{{ request.user.first_name }} {{ request.user.last_name }}{% endblock %}
+{% block readyoptions %}
+{% endblock %}
+{% block headeroptions %}
+{% endblock %}
+{% block pageheader %}
+						<h1 class="">Accès mobile de {{ request.user.first_name }} {{ request.user.last_name }}</h1>
+						<p class="lead">Cette page vous permet de générer votre token personnel afin de pouvoir utiliser l'application mobile.
+{% endblock %}
+{% block content %}
+				<div class="row">
+					<div class="col-lg-8 text-center">
+						{% qr_from_text user_meta.token 'l' %}
+					</div>
+					<div class="col-lg-4">Si vous n'avez pas d'appareil photo sur votre tablette ou mobile, votre token est le suivant:<br/><strong>{{user_meta.token}}</strong><br/><br/>Vous pouvez le saisir dans l'interface, il ne vous sera demandé qu'une seule et unique fois. Veuillez noter que ce code ne doit pas être distribué afin de garantir la sécurité des informations personnelles stockées sur ce site.</div>
+				</div>
+{% endblock %}
