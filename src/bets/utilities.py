@@ -9,6 +9,7 @@ from bets.models import Match, Attributes, Participant
 from datetime import datetime as dt
 from django.db.models import Q
 from seq_common.utils import dates
+import datetime
 
 MONGO_URL = 'mongodb://localhost:27017/'
 
@@ -139,37 +140,38 @@ def compute_fifa_wc_pools(event):
     set_event_meta(event, event_meta)
     
 def compute_fifa_wc_8th(event):
-    for match in event.matchs.filter(type__identifier='MATCH_EIGHTH'):
-        event.matchs.remove(match)
-        match.delete()
-    event.save()    
-    
-    event_meta = get_event_meta(event)
-    
-    for index in range(0,4):
-        effective_match = Match()
-        first = event_meta['groups'][event_meta['groups_list'][index * 2]][0]
-        second = event_meta['groups'][event_meta['groups_list'][(index * 2) + 1]][1]
-        effective_match.name = first['name'] + ' vs ' + second['name'] + ' [1' + event_meta['groups_list'][index * 2] + ' - 2' + event_meta['groups_list'][(index * 2) + 1] + ']'
-        effective_match.type = Attributes.objects.get(identifier='MATCH_EIGHTH', type='match_type')
-        effective_match.when = dt.combine(dates.AddDay(event.start_date,16 + index) , dt.min.time())
-        effective_match.first = Participant.objects.get(id=first['id'])
-        effective_match.second = Participant.objects.get(id=second['id'])
-        effective_match.save()
-        event.matchs.add(effective_match)
-        event.save()
-        effective_match = Match()
-        first = event_meta['groups'][event_meta['groups_list'][(index * 2) + 1]][0]
-        second = event_meta['groups'][event_meta['groups_list'][index * 2]][1]
-        effective_match.name = first['name'] + ' vs ' + second['name'] + ' [1' + event_meta['groups_list'][(index * 2) + 1] + ' - 2' + event_meta['groups_list'][index * 2] + ']'
-        effective_match.type = Attributes.objects.get(identifier='MATCH_EIGHTH', type='match_type')
-        effective_match.when = dt.combine(dates.AddDay(event.start_date,16 + index) , dt.min.time())
-        effective_match.first = Participant.objects.get(id=first['id'])
-        effective_match.second = Participant.objects.get(id=second['id'])
-        effective_match.save()
-        event.matchs.add(effective_match)
-        event.save()
-    complete_meta_for_type(event,'MATCH_EIGHTH')
+    if (datetime.date.today()-event.start_date).days<15:
+        for match in event.matchs.filter(type__identifier='MATCH_EIGHTH'):
+            event.matchs.remove(match)
+            match.delete()
+        event.save()    
+        
+        event_meta = get_event_meta(event)
+        
+        for index in range(0,4):
+            effective_match = Match()
+            first = event_meta['groups'][event_meta['groups_list'][index * 2]][0]
+            second = event_meta['groups'][event_meta['groups_list'][(index * 2) + 1]][1]
+            effective_match.name = first['name'] + ' vs ' + second['name'] + ' [1' + event_meta['groups_list'][index * 2] + ' - 2' + event_meta['groups_list'][(index * 2) + 1] + ']'
+            effective_match.type = Attributes.objects.get(identifier='MATCH_EIGHTH', type='match_type')
+            effective_match.when = dt.combine(dates.AddDay(event.start_date,16 + index) , dt.min.time())
+            effective_match.first = Participant.objects.get(id=first['id'])
+            effective_match.second = Participant.objects.get(id=second['id'])
+            effective_match.save()
+            event.matchs.add(effective_match)
+            event.save()
+            effective_match = Match()
+            first = event_meta['groups'][event_meta['groups_list'][(index * 2) + 1]][0]
+            second = event_meta['groups'][event_meta['groups_list'][index * 2]][1]
+            effective_match.name = first['name'] + ' vs ' + second['name'] + ' [1' + event_meta['groups_list'][(index * 2) + 1] + ' - 2' + event_meta['groups_list'][index * 2] + ']'
+            effective_match.type = Attributes.objects.get(identifier='MATCH_EIGHTH', type='match_type')
+            effective_match.when = dt.combine(dates.AddDay(event.start_date,16 + index) , dt.min.time())
+            effective_match.first = Participant.objects.get(id=first['id'])
+            effective_match.second = Participant.objects.get(id=second['id'])
+            effective_match.save()
+            event.matchs.add(effective_match)
+            event.save()
+        complete_meta_for_type(event,'MATCH_EIGHTH')
 
 def complete_any_event(event, match_type):
     event_meta = get_event_meta(event)
