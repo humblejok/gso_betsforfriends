@@ -2,11 +2,9 @@ from django.db.models import Q
 from django.shortcuts import render, redirect
 
 from bets.models import Group, Match, Bet, Score, UserRanking, LOGGER,\
-    BettableEvent, generate_matchs, compute_event_ranking, compute_group_ranking,\
-    compute_overall_ranking, generate_events, WinnerSetup, PointsSetup,\
+    BettableEvent, generate_matchs, compute_event_ranking, compute_overall_ranking, generate_events, WinnerSetup, PointsSetup,\
     Attributes, Winner, Participant
-from django.http.response import HttpResponse, HttpResponseForbidden,\
-    HttpResponseBadRequest
+from django.http.response import HttpResponse, HttpResponseBadRequest
 from django.contrib.auth.models import User
 import datetime
 from datetime import datetime as dt
@@ -17,7 +15,8 @@ import json
 from django.core.exceptions import PermissionDenied
 from bets import utilities
 from bets.utilities import generates_per_participant_result,\
-    compute_fifa_wc_pools, compute_fifa_wc_8th, complete_meta_for_type, get_event_meta
+    compute_fifa_wc_pools, compute_fifa_wc_8th, complete_meta_for_type, get_event_meta,\
+    compute_group_ranking
 from bets.user_meta import get_user_meta, initialize_user_meta
 
 

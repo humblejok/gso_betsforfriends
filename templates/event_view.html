@@ -24,7 +24,7 @@
 								<col width="20px"/>
 								{% endfor %}
 								<tr><th colspan=9 class="text-center">{% with attr_type="match_type"|get_attribute:match_type %}{{attr_type}}{% if not forloop.last %}s{% endif %}{% endwith %}</th></tr>
-								{% for match in event_data|get_dict_key:match_type %}
+								{% for match in event_data|get_dict_key:match_type|get_dict_key:'matchs' %}
 								{% if not forloop.parentloop.first %}
 									{% for i in downshift|get_range %}
 									<tr><td colspan=9 style="overflow: hidden;border: 1px solid white;">&nbsp;</td></tr>
@@ -32,8 +32,8 @@
 									{% endfor %}
 								{% endif %}
 								
-								<tr class="{% if match.result and match.winner.id == match.first.id %}success{% elif match.result and match.winner.id != match.first.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.first.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.result %}match.result.first{% else %}-{% endif %}</td></tr>
-								<tr class="{% if match.result and match.winner.id == match.second.id %}success{% elif match.result and match.winner.id != match.second.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.second.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.result %}match.result.second{% else %}-{% endif %}</td></tr>
+								<tr class="{% if match.result and match.winner.id == match.first.id %}success{% elif match.result and match.winner.id != match.first.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.first.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.score %}{{match.score.first}}{% else %}-{% endif %}</td></tr>
+								<tr class="{% if match.result and match.winner.id == match.second.id %}success{% elif match.result and match.winner.id != match.second.id %}error{% else %}active{% endif %}"><td colspan=8 class="text-center" style="overflow: hidden; border:1px solid black;">{{match.second.name}}</td><td class="text-center" style="overflow: hidden; border:1px solid black;">{% if match.score %}{{match.score.second}}{% else %}-{% endif %}</td></tr>
 								<tr><td colspan=9 style="overflow: hidden;border: None;">&nbsp;</td></tr>
 								<tr><td colspan=9 style="overflow: hidden;border: None;">&nbsp;</td></tr>
 								{% if not forloop.parentloop.first %}
