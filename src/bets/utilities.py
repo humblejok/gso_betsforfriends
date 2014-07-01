@@ -243,7 +243,6 @@ def compute_group_ranking(group_id=None):
     else:
         all_groups = Group.objects.filter(id=group_id)
     for group in all_groups:
-        ranks = []
         if not group.owners.all()[0].groups.filter(name='allow_amount').exists():
             LOGGER.info("Working on group " + str(group.name))
             for user in list(group.members.all()) + list(group.owners.all()):
@@ -258,7 +257,6 @@ def compute_group_ranking(group_id=None):
                     ranking.save()
                 else:
                     ranking = ranking[0]
-                ranks.append(ranking)
                 event_rank = EventRanking.objects.filter(event__id=group.event.id, owner__id=user.id)
                 if event_rank.exists():
                     event_rank = event_rank[0]
@@ -307,11 +305,8 @@ def compute_group_ranking(group_id=None):
                 else:
                     ranking.overall_score = 0                    
                 ranking.save()
-                ranks.append(ranking)
         winner_setups = WinnerSetup.objects.filter(group__id=group.id)
         event_meta = get_event_meta(group.event)
-        rank_list(ranks)
-        ranks = []
         for a_setup in winner_setups:
             for per_type in a_setup.setup.all():
                 LOGGER.info("Adding winner bets results for " + per_type.category.identifier)
@@ -325,11 +320,11 @@ def compute_group_ranking(group_id=None):
                         data = []
                 print data
                 for user in list(group.members.all()) + list(group.owners.all()):
+                    ranking = UserRanking.objects.get(owner__id=user.id, group__id=group.id)
                     winner = Winner.objects.filter(owner__id=user.id, event__id=group.event.id, category__identifier=per_type.category.identifier)
                     if winner.exists():
                         winner = winner[0]
                         found = len(winner.participants.filter(id__in=data))
-                        ranking = UserRanking.objects.get(owner__id=user.id, group__id=group.id)
                         if per_type.use_quotes:
                             LOGGER.info("User " + user.username + " found " + str(found) + " teams, adding " + str(found * per_type.points) + " points")
                             ranking.overall_score = ranking.overall_score + (found * per_type.points)
@@ -337,5 +332,5 @@ def compute_group_ranking(group_id=None):
                             LOGGER.info("User " + user.username + " found " + str(found) + " teams, adding " + str(POINTS_PER_TYPE[per_type.category.identifier][found]) + " points")
                             ranking.overall_score = ranking.overall_score + POINTS_PER_TYPE[per_type.category.identifier][found]
                         ranking.save()
-                    ranks.append(ranking)
+        ranks = [UserRanking.objects.get(owner__id=user.id, group__id=group.id) for user in list(group.members.all()) + list(group.owners.all())]
         rank_list(ranks)
