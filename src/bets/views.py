@@ -18,6 +18,7 @@ from bets.utilities import generates_per_participant_result,\
     compute_fifa_wc_pools, compute_fifa_wc_8th, complete_meta_for_type, get_event_meta,\
     compute_group_ranking
 from bets.user_meta import get_user_meta, initialize_user_meta
+import bets
 
 
 COUNT_PER_STEP = {'MATCH_SIXTEENTH': 32,
@@ -291,8 +292,28 @@ def group_details(request):
             all_matchs = group.event.matchs.all().order_by('when')
             all_bets = {}
             for match in all_matchs:
-                bets = Bet.objects.filter(match__id=match.id, owner__in=all_users_ids).order_by('owner__id')
-                all_bets[match.name] = bets
+                match_bets = []
+                for a_user in all_users:
+                    bets = Bet.objects.filter(match__id=match.id, owner__id=a_user.id)
+                    if not bets.exists():
+                        bet = Bet()
+                        bet.clean()
+                        bet.owner = a_user
+                        bet.match = match
+                        bet.when = datetime.datetime.now()
+                        bet.winner = None
+                        score = Score()
+                        score.name = match.name
+                        score.first = 0
+                        score.second = 0
+                        score.save()
+                        bet.result = score
+                        bet.save()
+                        match_bets.append(bet)
+                    else:
+                        match_bets.append(bets[0])
+                        
+                all_bets[match.name] = match_bets
             context = {'all_bets':all_bets, 'all_users': all_users, 'all_matchs': all_matchs, 'today': datetime.date.today().strftime('%Y-%m-%d'), 'allow_amount': allow_amount}
             return render(request,'group_details.html', context) 
     raise PermissionDenied()
