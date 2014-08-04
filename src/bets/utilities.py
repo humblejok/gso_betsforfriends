@@ -313,7 +313,7 @@ def compute_group_ranking(group_id=None):
                 if per_type.category.identifier!='MATCH_WINNER':
                     data = [team['id'] for team in event_meta[per_type.category.identifier]['teams']]
                 else:
-                    last_match = group.event.matchs.filter(result__isnull=False, type__identifier='MATCH_WINNER')
+                    last_match = group.event.matchs.filter(result__isnull=False, type__identifier='MATCH_FINAL')
                     if last_match.exists():
                         data = [last_match.first.id if last_match.result.first>last_match.result.second else last_match.second.id]
                     else:
